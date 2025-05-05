@@ -1,6 +1,6 @@
 numpy
 pandas
-pytorch  
+torch  
 transformers
 scikit-learn
 nltk
