@@ -1,0 +1,75 @@
+# Node modules
+node_modules/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Runtime data
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# Compiled files (par exemple, TypeScript ou Babel)
+dist/
+build/
+
+# Environnement local
+.env
+.env.local
+.env.*.local
+
+# Systèmes d'exploitation
+.DS_Store
+Thumbs.db
+
+# IDE/éditeur
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# venv
+venv/
+
+# data
+
+
+# Dépendances locales
+package-lock.json
+yarn.lock
+
+# Tests
+coverage/
+*.lcov
+
+# Temp files
+*.tmp
+*.temp
+
+# Bundles ou outputs minifiés
+*.bundle.js
+*.min.js
+*.min.css
+
+# Fichiers générés par un outil ou un workflow (par exemple, Prettier ou ESLint)
+*.cache
+.prettierignore
+.eslintcache
+
+# Fichiers d’images générés automatiquement
+*.png.cache
+*.jpg.cache
+
+# Fichiers temporaires du navigateur
+.cache/
+.cache-loader/
+
+
