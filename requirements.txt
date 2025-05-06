@@ -2,9 +2,12 @@ numpy
 pandas
 torch  
 transformers
+datasets
 scikit-learn
 nltk
 spacy
 matplotlib
 seaborn
 tqdm
+tokenizers
+accelerate
