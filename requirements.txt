@@ -11,3 +11,5 @@ seaborn
 tqdm
 tokenizers
 accelerate
+pathlib
+loguru
