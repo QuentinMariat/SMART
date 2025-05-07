@@ -3,6 +3,7 @@ import re
 from urllib.parse import urlparse, parse_qs
 import json
 import os
+import csv
 
 def get_video_id(url):
     # Handle youtu.be links
@@ -63,6 +64,34 @@ while True:
         break
 
 #display the comments
-print(f"Total comments: {len(COMMENTS)}")
-for i, comment in enumerate(COMMENTS, start=1):
-    print(f"{i}: {comment}")
+# Create a directory for the output if it doesn't exist
+output_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "output")
+os.makedirs(output_dir, exist_ok=True)
+
+# Create the CSV file path using the video ID for uniqueness
+csv_file_path = os.path.join(output_dir, f"youtube_comments_{VIDEO_ID}.csv")
+
+# Write comments to CSV file
+# Check if file exists
+file_exists = os.path.isfile(csv_file_path)
+
+with open(csv_file_path, 'a', newline='', encoding='utf-8') as file:
+    writer = csv.writer(file)
+    
+    # Write header only if file is being created
+    if not file_exists:
+        writer.writerow(['Comment Number', 'Comment Text'])  # Header row
+    
+    # Get the current comment count if file exists
+    if file_exists:
+        with open(csv_file_path, 'r', encoding='utf-8') as read_file:
+            comment_count = sum(1 for _ in read_file) - 1  # Subtract 1 for header
+    else:
+        comment_count = 0
+    
+    # Add new comments with continuing numbering
+    for i, comment in enumerate(COMMENTS, start=comment_count+1):
+        writer.writerow([i, comment])
+
+print(f"Total new comments added: {len(COMMENTS)}")
+print(f"Comments saved to: {csv_file_path}")
