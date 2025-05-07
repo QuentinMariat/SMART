@@ -13,8 +13,9 @@ class BPETokenizer:
 
     def train(self, corpus: list[str]):
         # Tokenisation initiale : caractères + </w> pour marquer fin de mot
+        # On conserve les espaces et ajoute </w> seulement à la fin de chaque ligne complète
         tokenized_words = [list(word) + ["</w>"] for line in corpus for word in line.strip().split()]
-        vocab_counter = Counter([" ".join(word) for word in tokenized_words])
+        vocab_counter = Counter([" ".join(line) for line in tokenized_words])
 
         def get_stats(vocab):
             pairs = defaultdict(int)
@@ -25,12 +26,15 @@ class BPETokenizer:
             return pairs
 
         def merge_vocab(pair, vocab):
-            pattern = re.escape(" ".join(pair))
-            pattern = re.compile(r"(?<!\S)" + pattern + r"(?!\S)")
+            # On échappe la paire pour la recherche, mais
+            # on utilise un callable pour remplacer littéralement.
+            regex = re.compile(r"(?<!\S)" + re.escape(" ".join(pair)) + r"(?!\S)")
+            merged = "".join(pair)
             new_vocab = {}
-            for word in vocab:
-                new_word = pattern.sub("".join(pair), word)
-                new_vocab[new_word] = vocab[word]
+            for word, freq in vocab.items():
+                # on passe un callable pour que merged soit inséré tel quel
+                new_word = regex.sub(lambda m: merged, word)
+                new_vocab[new_word] = freq
             return new_vocab
 
         for _ in range(self.vocab_size):
@@ -46,8 +50,8 @@ class BPETokenizer:
         for word in vocab_counter:
             tokens.update(word.split())
 
-        tokens.add("<unk>")  # pour gérer les inconnus
-        self.vocab = {token: idx for idx, token in enumerate(tokens)}
+        tokens.update(["<unk>", " "])
+        self.vocab = {token: idx for idx, token in enumerate(sorted(tokens))}
 
     def encode(self, text: str):
         tokens = list(text) + ["</w>"]
