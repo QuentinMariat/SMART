@@ -18,7 +18,7 @@ LABEL2ID = {label: i for i, label in enumerate(EMOTION_LABELS)}
 ID2LABEL = {i: label for i, label in enumerate(EMOTION_LABELS)}
 NUM_LABELS = len(EMOTION_LABELS)
 
-
+BASE_MODEL_NAME = "distilbert-base-uncased"
 # hyperparamètres à ajuster pour l'entraînement
 TRAINING_ARGS = {
     "output_dir": "./results",
