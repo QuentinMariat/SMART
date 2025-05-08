@@ -7,17 +7,17 @@ MODEL_NAME = "distilbert-base-uncased"
 DATASET_NAME = "go_emotions"
 
 EMOTION_LABELS = [
-    "admiration", "amusement", "anger", "annoyance", "approval", "caring",
-    "confusion", "curiosity", "desire", "disappointment", "disapproval",
-    "disgust", "embarrassment", "excitement", "fear", "gratitude",
-    "grief", "joy", "love", "nervousness", "optimism", "pride",
-    "realization", "relief", "remorse", "sadness", "surprise", "neutral"
+    'admiration', 'amusement', 'anger', 'annoyance', 'approval', 'caring',
+    'confusion', 'curiosity', 'desire', 'disappointment', 'disapproval',
+    'disgust', 'embarrassment', 'excitement', 'fear', 'gratitude',
+    'grief', 'joy', 'love', 'nervousness', 'optimism', 'pride',
+    'realization', 'relief', 'remorse', 'sadness', 'surprise', 'neutral'
 ]
+
+LABEL2ID = {label: i for i, label in enumerate(EMOTION_LABELS)}
+ID2LABEL = {i: label for i, label in enumerate(EMOTION_LABELS)}
 NUM_LABELS = len(EMOTION_LABELS)
 
-# mappings pour convertir les IDs en labels et inverse
-ID2LABEL = {i: label for i, label in enumerate(EMOTION_LABELS)}
-LABEL2ID = {label: i for i, label in enumerate(EMOTION_LABELS)}
 
 # hyperparamètres à ajuster pour l'entraînement
 TRAINING_ARGS = {
