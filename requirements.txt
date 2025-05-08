@@ -1,13 +1,5 @@
-numpy
-pandas
-torch  
 transformers
 datasets
+torch
 scikit-learn
-nltk
-spacy
-matplotlib
-seaborn
-tqdm
-tokenizers
-accelerate
+pandas
