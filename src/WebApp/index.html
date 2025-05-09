@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sentiment Analyzer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .sentiment-positive {
+            background-color: #d1fae5;
+            border-left: 4px solid #10b981;
+        }
+        .sentiment-negative {
+            background-color: #fee2e2;
+            border-left: 4px solid #ef4444;
+        }
+        .sentiment-neutral {
+            background-color: #e0e7ff;
+            border-left: 4px solid #6366f1;
+        }
+        .page-transition {
+            transition: all 0.3s ease-in-out;
+        }
+        .chat-message {
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .pulse {
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .diagram-container {
+            position: relative;
+            width: 100%;
+            overflow: hidden;
+            margin: 2rem 0;
+        }
+        .transformer-diagram {
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .attention-head {
+            fill: #6366f1;
+            opacity: 0.8;
+        }
+        .attention-line {
+            stroke: #8b5cf6;
+            stroke-width: 2;
+            stroke-dasharray: 5,5;
+        }
+        .encoder-block {
+            fill: #ec4899;
+            opacity: 0.7;
+        }
+        .decoder-block {
+            fill: #14b8a6;
+            opacity: 0.7;
+        }
+        .embedding-layer {
+            fill: #f59e0b;
+            opacity: 0.7;
+        }
+        .positional-encoding {
+            fill: #10b981;
+            opacity: 0.7;
+        }
+        .tech-diagram {
+            background-color: white;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            margin: 1rem 0;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans">
+    <!-- Navigation -->
+    <nav class="bg-indigo-600 text-white shadow-lg">
+        <div class="max-w-6xl mx-auto px-4">
+            <div class="flex justify-between items-center py-4">
+                <div class="flex items-center space-x-4">
+                    <i class="fas fa-robot text-2xl"></i>
+                    <span class="font-bold text-xl">Sentiment Analyzer</span>
+                </div>
+                <div class="hidden md:flex items-center space-x-8">
+                    <button onclick="showPage('home')" class="nav-link active">Home</button>
+                    <button onclick="showPage('analyzer')" class="nav-link">Analyzer</button>
+                    <button onclick="showPage('technical')" class="nav-link">Technical</button>
+                    <button onclick="showPage('about')" class="nav-link">About</button>
+                    <button onclick="showPage('contact')" class="nav-link">Contact</button>
+                </div>
+                <button class="md:hidden focus:outline-none" id="mobile-menu-button">
+                    <i class="fas fa-bars text-2xl"></i>
+                </button>
+            </div>
+        </div>
+        <!-- Mobile menu -->
+        <div class="md:hidden hidden bg-indigo-700" id="mobile-menu">
+            <div class="px-4 py-2 flex flex-col space-y-2">
+                <button onclick="showPage('home')" class="nav-link-mobile active">Home</button>
+                <button onclick="showPage('analyzer')" class="nav-link-mobile">Analyzer</button>
+                <button onclick="showPage('technical')" class="nav-link-mobile">Technical</button>
+                <button onclick="showPage('about')" class="nav-link-mobile">About</button>
+                <button onclick="showPage('contact')" class="nav-link-mobile">Contact</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="max-w-6xl mx-auto px-4 py-8">
+        <!-- Home Page -->
+        <div id="home-page" class="page-transition">
+            <div class="bg-white rounded-xl shadow-md overflow-hidden p-6 mb-8">
+                <div class="md:flex">
+                    <div class="md:flex-shrink-0">
+                        <img class="h-48 w-full object-contain md:h-full md:w-48" src="https://cdn-icons-png.flaticon.com/512/1998/1998664.png" alt="Sentiment Analysis">
+                    </div>
+                    <div class="p-8">
+                        <div class="uppercase tracking-wide text-sm text-indigo-600 font-semibold">Welcome to</div>
+                        <h1 class="mt-2 text-3xl font-extrabold text-gray-900">Sentiment Analyzer</h1>
+                        <p class="mt-3 text-gray-600">
+                            Our advanced AI-powered tool helps you understand the emotional tone behind any text. 
+                            Whether you're analyzing customer feedback, social media posts, or any written content, 
+                            our sentiment analyzer provides instant insights.
+                        </p>
+                        <div class="mt-6">
+                            <button onclick="showPage('analyzer')" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition duration-300 flex items-center">
+                                <i class="fas fa-play mr-2"></i> Try Analyzer
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid md:grid-cols-3 gap-6 mb-8">
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <div class="text-indigo-600 mb-4">
+                        <i class="fas fa-bolt text-3xl"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-2">Real-time Analysis</h3>
+                    <p class="text-gray-600">Get instant sentiment analysis results as you type or paste your text.</p>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <div class="text-indigo-600 mb-4">
+                        <i class="fas fa-chart-pie text-3xl"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-2">Detailed Insights</h3>
+                    <p class="text-gray-600">Understand not just positive/negative but also the intensity of sentiment.</p>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <div class="text-indigo-600 mb-4">
+                        <i class="fas fa-lock text-3xl"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-2">Secure & Private</h3>
+                    <p class="text-gray-600">Your data is processed securely and never stored permanently.</p>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-md p-6">
+                <h2 class="text-2xl font-bold mb-4">How It Works</h2>
+                <div class="space-y-6">
+                    <div class="flex items-start">
+                        <div class="flex-shrink-0 bg-indigo-100 rounded-full p-2">
+                            <span class="text-indigo-600 font-bold">1</span>
+                        </div>
+                        <div class="ml-4">
+                            <h3 class="font-semibold">Enter Your Text</h3>
+                            <p class="text-gray-600 mt-1">Type or paste any text you want to analyze into the chat interface.</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start">
+                        <div class="flex-shrink-0 bg-indigo-100 rounded-full p-2">
+                            <span class="text-indigo-600 font-bold">2</span>
+                        </div>
+                        <div class="ml-4">
+                            <h3 class="font-semibold">AI Processing</h3>
+                            <p class="text-gray-600 mt-1">Our advanced NLP model analyzes the emotional tone of your text.</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start">
+                        <div class="flex-shrink-0 bg-indigo-100 rounded-full p-2">
+                            <span class="text-indigo-600 font-bold">3</span>
+                        </div>
+                        <div class="ml-4">
+                            <h3 class="font-semibold">Get Results</h3>
+                            <p class="text-gray-600 mt-1">Receive a detailed sentiment analysis with confidence scores.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Analyzer Page -->
+        <div id="analyzer-page" class="page-transition hidden">
+            <div class="bg-white rounded-xl shadow-md overflow-hidden">
+                <div class="p-4 border-b border-gray-200 bg-indigo-600 text-white">
+                    <h2 class="text-xl font-bold flex items-center">
+                        <i class="fas fa-comment-alt mr-2"></i> Sentiment Analysis Chat
+                    </h2>
+                </div>
+                
+                <div class="h-96 overflow-y-auto p-4 bg-gray-50" id="chat-container">
+                    <div class="chat-message mb-4">
+                        <div class="flex items-start">
+                            <div class="flex-shrink-0 bg-indigo-100 rounded-full p-2">
+                                <i class="fas fa-robot text-indigo-600"></i>
+                            </div>
+                            <div class="ml-3">
+                                <div class="bg-white p-3 rounded-lg shadow-sm max-w-3xl">
+                                    <p>Hello! I'm your sentiment analysis assistant. Paste or type any text, and I'll analyze its emotional tone for you.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="p-4 border-t border-gray-200 bg-white">
+                    <div class="flex space-x-2">
+                        <textarea id="message-input" class="flex-1 border border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-indigo-500" rows="3" placeholder="Type or paste your text here..."></textarea>
+                        <button id="send-button" class="bg-indigo-600 text-white rounded-lg p-3 hover:bg-indigo-700 transition duration-300 self-end">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+                    <div class="mt-2 flex space-x-2">
+                        <button id="clear-button" class="text-sm bg-gray-200 text-gray-700 px-3 py-1 rounded hover:bg-gray-300 transition duration-300">
+                            <i class="fas fa-trash-alt mr-1"></i> Clear
+                        </button>
+                        <button id="sample-button" class="text-sm bg-gray-200 text-gray-700 px-3 py-1 rounded hover:bg-gray-300 transition duration-300">
+                            <i class="fas fa-lightbulb mr-1"></i> Sample Text
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mt-8 bg-white rounded-xl shadow-md p-6">
+                <h2 class="text-xl font-bold mb-4">Understanding Sentiment Analysis</h2>
+                <div class="grid md:grid-cols-3 gap-4">
+                    <div class="p-4 rounded-lg sentiment-positive">
+                        <div class="font-bold text-green-700 mb-2">Positive Sentiment</div>
+                        <p class="text-gray-700">Text expresses happiness, satisfaction, or optimism. Example: "I love this product! It works perfectly."</p>
+                    </div>
+                    <div class="p-4 rounded-lg sentiment-negative">
+                        <div class="font-bold text-red-700 mb-2">Negative Sentiment</div>
+                        <p class="text-gray-700">Text expresses anger, sadness, or dissatisfaction. Example: "This is the worst service I've ever experienced."</p>
+                    </div>
+                    <div class="p-4 rounded-lg sentiment-neutral">
+                        <div class="font-bold text-indigo-700 mb-2">Neutral Sentiment</div>
+                        <p class="text-gray-700">Text is factual without strong emotions. Example: "The meeting is scheduled for 2 PM tomorrow."</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Technical Page -->
+        <div id="technical-page" class="page-transition hidden">
+            <div class="bg-white rounded-xl shadow-md p-6 mb-8">
+                <h1 class="text-3xl font-bold mb-6">How Transformers Power Sentiment Analysis</h1>
+                
+                <div class="prose max-w-none">
+                    <p class="mb-4">
+                        Our sentiment analyzer is powered by transformer-based models, the same architecture behind 
+                        state-of-the-art language models like BERT and GPT. These models excel at understanding 
+                        context and emotional tone in text.
+                    </p>
+                    
+                    <h2 class="text-2xl font-bold mt-8 mb-4">Transformer Architecture</h2>
+                    
+                    <div class="tech-diagram">
+                        <div class="diagram-container">
+                            <svg class="transformer-diagram" viewBox="0 0 800 400" xmlns="http://www.w3.org/2000/svg">
+                                <!-- Input Embeddings -->
+                                <rect x="50" y="50" width="100" height="50" rx="5" class="embedding-layer"/>
+                                <text x="100" y="80" text-anchor="middle" fill="white" font-weight="bold">Input</text>
+                                
+                                <!-- Positional Encoding -->
+                                <rect x="50" y="120" width="100" height="50" rx="5" class="positional-encoding"/>
+                                <text x="100" y="150" text-anchor="middle" fill="white" font-weight="bold">Position</text>
+                                
+                                <!-- Encoder Stack -->
+                                <rect x="200" y="50" width="100" height="120" rx="5" class="encoder-block"/>
+                                <text x="250" y="120" text-anchor="middle" fill="white" font-weight="bold">Encoder</text>
+                                
+                                <!-- Multi-Head Attention -->
+                                <rect x="350" y="80" width="100" height="40" rx="5" class="attention-head"/>
+                                <text x="400" y="105" text-anchor="middle" fill="white" font-size="12">Attention</text>
+                                
+                                <!-- Feed Forward -->
+                                <rect x="350" y="140" width="100" height="40" rx="5" class="encoder-block"/>
+                                <text x="400" y="165" text-anchor="middle" fill="white" font-size="12">Feed Forward</text>
+                                
+                                <!-- Output -->
+                                <rect x="500" y="50" width="100" height="50" rx="5" class="decoder-block"/>
+                                <text x="550" y="80" text-anchor="middle" fill="white" font-weight="bold">Context</text>
+                                
+                                <!-- Classification Head -->
+                                <rect x="500" y="120" width="100" height="50" rx="5" class="decoder-block"/>
+                                <text x="550" y="150" text-anchor="middle" fill="white" font-weight="bold">Sentiment</text>
+                                
+                                <!-- Arrows -->
+                                <line x1="150" y1="75" x2="200" y2="75" stroke="#4b5563" stroke-width="2"/>
+                                <line x1="150" y1="145" x2="200" y2="145" stroke="#4b5563" stroke-width="2"/>
+                                <line x1="300" y1="110" x2="350" y2="100" stroke="#4b5563" stroke-width="2"/>
+                                <line x1="300" y1="110" x2="350" y2="120" stroke="#4b5563" stroke-width="2"/>
+                                <line x1="450" y1="100" x2="500" y2="75" stroke="#4b5563" stroke-width="2"/>
+                                <line x1="450" y1="160" x2="500" y2="145" stroke="#4b5563" stroke-width="2"/>
+                            </svg>
+                        </div>
+                        
+                        <div class="grid md:grid-cols-3 gap-4 mt-6">
+                            <div class="p-3 bg-indigo-50 rounded-lg">
+                                <h3 class="font-semibold text-indigo-800">Input Embedding</h3>
+                                <p class="text-sm text-gray-700">Words are converted to numerical vectors that capture semantic meaning.</p>
+                            </div>
+                            <div class="p-3 bg-green-50 rounded-lg">
+                                <h3 class="font-semibold text-green-800">Positional Encoding</h3>
+                                <p class="text-sm text-gray-700">Information about word order is added to understand sequence.</p>
+                            </div>
+                            <div class="p-3 bg-purple-50 rounded-lg">
+                                <h3 class="font-semibold text-purple-800">Attention Mechanism</h3>
+                                <p class="text-sm text-gray-700">Model learns which words to focus on for sentiment analysis.</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <h2 class="text-2xl font-bold mt-8 mb-4">Self-Attention Mechanism</h2>
+                    
+                    <div class="tech-diagram">
+                        <div class="diagram-container">
+                            <svg class="transformer-diagram" viewBox="0 0 800 300" xmlns="http://www.w3.org/2000/svg">
+                                <!-- Sentence -->
+                                <text x="400" y="50" text-anchor="middle" font-size="16" font-weight="bold">"The movie was great but the acting was terrible"</text>
+                                
+                                <!-- Words -->
+                                <circle cx="200" cy="120" r="30" fill="#6366f1" opacity="0.7"/>
+                                <text x="200" y="125" text-anchor="middle" fill="white" font-weight="bold">great</text>
+                                
+                                <circle cx="400" cy="120" r="30" fill="#6366f1" opacity="0.7"/>
+                                <text x="400" y="125" text-anchor="middle" fill="white" font-weight="bold">but</text>
+                                
+                                <circle cx="600" cy="120" r="30" fill="#6366f1" opacity="0.7"/>
+                                <text x="600" y="125" text-anchor="middle" fill="white" font-weight="bold">terrible</text>
+                                
+                                <!-- Attention lines -->
+                                <line x1="200" y1="150" x2="400" y2="180" class="attention-line"/>
+                                <line x1="200" y1="150" x2="600" y2="180" class="attention-line" stroke-dasharray="10,5"/>
+                                <line x1="400" y1="150" x2="600" y2="180" class="attention-line"/>
+                                
+                                <!-- Legend -->
+                                <line x1="100" y1="220" x2="150" y2="220" class="attention-line"/>
+                                <text x="170" y="225" text-anchor="start">Strong attention</text>
+                                
+                                <line x1="100" y1="250" x2="150" y2="250" class="attention-line" stroke-dasharray="10,5"/>
+                                <text x="170" y="255" text-anchor="start">Weak attention</text>
+                            </svg>
+                        </div>
+                        
+                        <p class="mt-4 text-gray-700">
+                            The self-attention mechanism allows each word to interact with every other word in the sentence, 
+                            determining how much focus to place on different parts when analyzing sentiment. In this example, 
+                            "great" and "terrible" would receive strong attention weights as they carry the most emotional content.
+                        </p>
+                    </div>
+                    
+                    <h2 class="text-2xl font-bold mt-8 mb-4">Sentiment Classification Process</h2>
+                    
+                    <div class="tech-diagram">
+                        <div class="grid md:grid-cols-3 gap-4">
+                            <div class="p-4 bg-blue-50 rounded-lg">
+                                <div class="text-blue-600 mb-2">
+                                    <i class="fas fa-layer-group text-2xl"></i>
+                                </div>
+                                <h3 class="font-semibold">1. Contextual Embedding</h3>
+                                <p class="text-sm text-gray-700">Transformer creates rich representations that understand word meaning in context.</p>
+                            </div>
+                            <div class="p-4 bg-purple-50 rounded-lg">
+                                <div class="text-purple-600 mb-2">
+                                    <i class="fas fa-brain text-2xl"></i>
+                                </div>
+                                <h3 class="font-semibold">2. Attention Weights</h3>
+                                <p class="text-sm text-gray-700">Model identifies which words are most relevant for sentiment analysis.</p>
+                            </div>
+                            <div class="p-4 bg-green-50 rounded-lg">
+                                <div class="text-green-600 mb-2">
+                                    <i class="fas fa-chart-bar text-2xl"></i>
+                                </div>
+                                <h3 class="font-semibold">3. Classification Head</h3>
+                                <p class="text-sm text-gray-700">Final layers map the contextual understanding to sentiment probabilities.</p>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-6 p-4 bg-gray-50 rounded-lg">
+                            <h3 class="font-semibold mb-2">Example Analysis</h3>
+                            <div class="flex items-center space-x-4">
+                                <div class="flex-shrink-0">
+                                    <i class="fas fa-quote-left text-gray-400 text-2xl"></i>
+                                </div>
+                                <div>
+                                    <p class="italic text-gray-700">"The service was slow but the food was amazing"</p>
+                                    <div class="mt-2 flex space-x-4">
+                                        <div>
+                                            <span class="text-sm font-medium">Negative:</span>
+                                            <div class="w-full bg-gray-200 rounded-full h-2.5">
+                                                <div class="bg-red-500 h-2.5 rounded-full" style="width: 30%"></div>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <span class="text-sm font-medium">Neutral:</span>
+                                            <div class="w-full bg-gray-200 rounded-full h-2.5">
+                                                <div class="bg-blue-500 h-2.5 rounded-full" style="width: 10%"></div>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <span class="text-sm font-medium">Positive:</span>
+                                            <div class="w-full bg-gray-200 rounded-full h-2.5">
+                                                <div class="bg-green-500 h-2.5 rounded-full" style="width: 60%"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <h2 class="text-2xl font-bold mt-8 mb-4">Model Training Process</h2>
+                    
+                    <div class="tech-diagram">
+                        <div class="flex items-start space-x-4">
+                            <div class="flex-shrink-0">
+                                <div class="bg-indigo-100 rounded-full p-3">
+                                    <i class="fas fa-database text-indigo-600"></i>
+                                </div>
+                            </div>
+                            <div>
+                                <h3 class="font-semibold">1. Data Collection</h3>
+                                <p class="text-gray-700">Millions of text samples with sentiment labels are gathered from various sources.</p>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-start space-x-4 mt-4">
+                            <div class="flex-shrink-0">
+                                <div class="bg-purple-100 rounded-full p-3">
+                                    <i class="fas fa-cogs text-purple-600"></i>
+                                </div>
+                            </div>
+                            <div>
+                                <h3 class="font-semibold">2. Pre-training</h3>
+                                <p class="text-gray-700">Model learns general language understanding through masked language modeling.</p>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-start space-x-4 mt-4">
+                            <div class="flex-shrink-0">
+                                <div class="bg-green-100 rounded-full p-3">
+                                    <i class="fas fa-tasks text-green-600"></i>
+                                </div>
+                            </div>
+                            <div>
+                                <h3 class="font-semibold">3. Fine-tuning</h3>
+                                <p class="text-gray-700">Model is specifically trained on sentiment analysis tasks with labeled data.</p>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-start space-x-4 mt-4">
+                            <div class="flex-shrink-0">
+                                <div class="bg-red-100 rounded-full p-3">
+                                    <i class="fas fa-chart-line text-red-600"></i>
+                                </div>
+                            </div>
+                            <div>
+                                <h3 class="font-semibold">4. Evaluation</h3>
+                                <p class="text-gray-700">Model performance is measured on held-out test sets for accuracy.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- About Page -->
+        <div id="about-page" class="page-transition hidden">
+            <div class="bg-white rounded-xl shadow-md p-6 mb-8">
+                <h1 class="text-3xl font-bold mb-6">About Sentiment Analyzer</h1>
+                <div class="prose max-w-none">
+                    <p class="mb-4">
+                        Sentiment Analyzer is an advanced natural language processing tool designed to detect and interpret emotional tones in written text. 
+                        Our platform leverages state-of-the-art machine learning models to provide accurate sentiment analysis.
+                    </p>
+                    <p class="mb-4">
+                        Whether you're a business looking to understand customer feedback, a researcher analyzing social media trends, 
+                        or just curious about the emotional tone of your writing, our tool provides valuable insights.
+                    </p>
+                    
+                    <h2 class="text-2xl font-bold mt-8 mb-4">Our Technology</h2>
+                    <p class="mb-4">
+                        The analyzer uses a combination of deep learning models and linguistic rules to evaluate text. 
+                        Our backend is built with FastAPI for efficient processing, and we employ transformer-based models 
+                        fine-tuned for sentiment analysis tasks.
+                    </p>
+                    
+                    <div class="bg-indigo-50 p-4 rounded-lg mt-6">
+                        <h3 class="text-xl font-semibold mb-2 text-indigo-800">Key Features:</h3>
+                        <ul class="list-disc pl-5 space-y-2">
+                            <li>Real-time sentiment detection</li>
+                            <li>Emotion intensity scoring</li>
+                            <li>Context-aware analysis</li>
+                            <li>Multi-language support</li>
+                            <li>Secure API integration</li>
+                        </ul>
+                    </div>
+                    
+                    <h2 class="text-2xl font-bold mt-8 mb-4">Use Cases</h2>
+                    <div class="grid md:grid-cols-2 gap-4">
+                        <div class="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+                            <h3 class="font-semibold mb-2">Customer Feedback Analysis</h3>
+                            <p>Understand customer satisfaction from reviews, surveys, and support tickets.</p>
+                        </div>
+                        <div class="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+                            <h3 class="font-semibold mb-2">Social Media Monitoring</h3>
+                            <p>Track brand sentiment across social platforms to gauge public perception.</p>
+                        </div>
+                        <div class="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+                            <h3 class="font-semibold mb-2">Market Research</h3>
+                            <p>Analyze consumer opinions about products, services, or trends.</p>
+                        </div>
+                        <div class="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+                            <h3 class="font-semibold mb-2">Content Optimization</h3>
+                            <p>Tune your messaging to evoke the desired emotional response.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Contact Page -->
+        <div id="contact-page" class="page-transition hidden">
+            <div class="bg-white rounded-xl shadow-md p-6 mb-8">
+                <h1 class="text-3xl font-bold mb-6">Contact Us</h1>
+                <div class="grid md:grid-cols-2 gap-8">
+                    <div>
+                        <h2 class="text-xl font-semibold mb-4">Get in Touch</h2>
+                        <p class="mb-6">Have questions about our sentiment analysis tool? Want to discuss potential integrations or custom solutions? We'd love to hear from you.</p>
+                        
+                        <div class="space-y-4">
+                            <div class="flex items-start">
+                                <div class="flex-shrink-0 bg-indigo-100 p-2 rounded-full">
+                                    <i class="fas fa-envelope text-indigo-600"></i>
+                                </div>
+                                <div class="ml-3">
+                                    <h3 class="font-medium">Email</h3>
+                                    <p class="text-gray-600">support@sentimentanalyzer.com</p>
+                                </div>
+                            </div>
+                            <div class="flex items-start">
+                                <div class="flex-shrink-0 bg-indigo-100 p-2 rounded-full">
+                                    <i class="fas fa-phone-alt text-indigo-600"></i>
+                                </div>
+                                <div class="ml-3">
+                                    <h3 class="font-medium">Phone</h3>
+                                    <p class="text-gray-600">+1 (555) 123-4567</p>
+                                </div>
+                            </div>
+                            <div class="flex items-start">
+                                <div class="flex-shrink-0 bg-indigo-100 p-2 rounded-full">
+                                    <i class="fas fa-map-marker-alt text-indigo-600"></i>
+                                </div>
+                                <div class="ml-3">
+                                    <h3 class="font-medium">Address</h3>
+                                    <p class="text-gray-600">123 AI Street, Tech Valley, CA 94000</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-8">
+                            <h3 class="font-semibold mb-3">Follow Us</h3>
+                            <div class="flex space-x-4">
+                                <a href="#" class="bg-gray-100 p-2 rounded-full hover:bg-indigo-100 transition duration-300">
+                                    <i class="fab fa-twitter text-indigo-600"></i>
+                                </a>
+                                <a href="#" class="bg-gray-100 p-2 rounded-full hover:bg-indigo-100 transition duration-300">
+                                    <i class="fab fa-linkedin-in text-indigo-600"></i>
+                                </a>
+                                <a href="#" class="bg-gray-100 p-2 rounded-full hover:bg-indigo-100 transition duration-300">
+                                    <i class="fab fa-github text-indigo-600"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <h2 class="text-xl font-semibold mb-4">Send a Message</h2>
+                        <form class="space-y-4">
+                            <div>
+                                <label for="name" class="block text-sm font-medium text-gray-700">Name</label>
+                                <input type="text" id="name" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                            </div>
+                            <div>
+                                <label for="email" class="block text-sm font-medium text-gray-700">Email</label>
+                                <input type="email" id="email" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                            </div>
+                            <div>
+                                <label for="subject" class="block text-sm font-medium text-gray-700">Subject</label>
+                                <input type="text" id="subject" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                            </div>
+                            <div>
+                                <label for="message" class="block text-sm font-medium text-gray-700">Message</label>
+                                <textarea id="message" rows="4" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"></textarea>
+                            </div>
+                            <div>
+                                <button type="submit" class="w-full bg-indigo-600 text-white py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                    Send Message
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-white py-8">
+        <div class="max-w-6xl mx-auto px-4">
+            <div class="grid md:grid-cols-4 gap-8">
+                <div>
+                    <h3 class="text-lg font-semibold mb-4">Sentiment Analyzer</h3>
+                    <p class="text-gray-400">Advanced AI-powered sentiment analysis for your text content.</p>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold mb-4">Quick Links</h3>
+                    <ul class="space-y-2">
+                        <li><button onclick="showPage('home')" class="text-gray-400 hover:text-white transition duration-300">Home</button></li>
+                        <li><button onclick="showPage('analyzer')" class="text-gray-400 hover:text-white transition duration-300">Analyzer</button></li>
+                        <li><button onclick="showPage('technical')" class="text-gray-400 hover:text-white transition duration-300">Technical</button></li>
+                        <li><button onclick="showPage('about')" class="text-gray-400 hover:text-white transition duration-300">About</button></li>
+                        <li><button onclick="showPage('contact')" class="text-gray-400 hover:text-white transition duration-300">Contact</button></li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold mb-4">Resources</h3>
+                    <ul class="space-y-2">
+                        <li><a href="#" class="text-gray-400 hover:text-white transition duration-300">Documentation</a></li>
+                        <li><a href="#" class="text-gray-400 hover:text-white transition duration-300">API Reference</a></li>
+                        <li><a href="#" class="text-gray-400 hover:text-white transition duration-300">Blog</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold mb-4">Subscribe</h3>
+                    <p class="text-gray-400 mb-2">Stay updated with our latest features.</p>
+                    <div class="flex">
+                        <input type="email" placeholder="Your email" class="px-3 py-2 bg-gray-700 text-white rounded-l focus:outline-none w-full">
+                        <button class="bg-indigo-600 px-4 py-2 rounded-r hover:bg-indigo-700 transition duration-300">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="border-t border-gray-700 mt-8 pt-6 text-center text-gray-400">
+                <p>&copy; 2023 Sentiment Analyzer. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // API Configuration
+        const API_URL = 'http://localhost:8000/analyze'; // Replace with your FastAPI endpoint
+        
+        // DOM Elements
+        const messageInput = document.getElementById('message-input');
+        const sendButton = document.getElementById('send-button');
+        const clearButton = document.getElementById('clear-button');
+        const sampleButton = document.getElementById('sample-button');
+        const chatContainer = document.getElementById('chat-container');
+        const mobileMenuButton = document.getElementById('mobile-menu-button');
+        const mobileMenu = document.getElementById('mobile-menu');
+        
+        // Mobile menu toggle
+        mobileMenuButton.addEventListener('click', () => {
+            mobileMenu.classList.toggle('hidden');
+        });
+        
+        // Navigation functions
+        function showPage(pageId) {
+            // Hide all pages
+            document.querySelectorAll('[id$="-page"]').forEach(page => {
+                page.classList.add('hidden');
+            });
+            
+            // Show selected page
+            document.getElementById(`${pageId}-page`).classList.remove('hidden');
+            
+            // Update active nav link
+            document.querySelectorAll('.nav-link, .nav-link-mobile').forEach(link => {
+                link.classList.remove('active');
+            });
+            
+            // Close mobile menu if open
+            mobileMenu.classList.add('hidden');
+            
+            // Scroll to top
+            window.scrollTo(0, 0);
+        }
+        
+        // Add active class to clicked nav link
+        document.querySelectorAll('.nav-link, .nav-link-mobile').forEach(link => {
+            link.addEventListener('click', function() {
+                document.querySelectorAll('.nav-link, .nav-link-mobile').forEach(l => l.classList.remove('active'));
+                this.classList.add('active');
+            });
+        });
+        
+        // Sample texts for demo
+        const sampleTexts = [
+            "I absolutely love this product! It has changed my life for the better and I can't imagine going back.",
+            "This service is terrible. I've never been so disappointed with a purchase in my entire life.",
+            "The meeting is scheduled for 2 PM tomorrow in the conference room. Please bring your reports.",
+            "I'm feeling quite happy today because the weather is nice and I got a lot of work done.",
+            "The customer support was rude and unhelpful. They didn't resolve my issue at all."
+        ];
+        
+        // Add message to chat
+        function addMessage(text, isUser = false) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `chat-message mb-4 ${isUser ? 'user-message' : ''}`;
+            
+            messageDiv.innerHTML = `
+                <div class="flex items-start">
+                    <div class="flex-shrink-0 ${isUser ? 'bg-indigo-600' : 'bg-indigo-100'} rounded-full p-2">
+                        <i class="${isUser ? 'fas fa-user text-white' : 'fas fa-robot text-indigo-600'}"></i>
+                    </div>
+                    <div class="ml-3">
+                        <div class="${isUser ? 'bg-indigo-100 text-gray-800' : 'bg-white'} p-3 rounded-lg shadow-sm max-w-3xl">
+                            <p>${text}</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            chatContainer.appendChild(messageDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+        
+        // Add analysis result to chat
+        function addAnalysisResult(sentiment, confidence, explanation) {
+            let sentimentClass = '';
+            let sentimentIcon = '';
+            
+            if (sentiment === 'positive') {
+                sentimentClass = 'sentiment-positive';
+                sentimentIcon = 'fas fa-smile-beam text-green-600';
+            } else if (sentiment === 'negative') {
+                sentimentClass = 'sentiment-negative';
+                sentimentIcon = 'fas fa-frown text-red-600';
+            } else {
+                sentimentClass = 'sentiment-neutral';
+                sentimentIcon = 'fas fa-meh text-indigo-600';
+            }
+            
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `chat-message mb-4`;
+            
+            resultDiv.innerHTML = `
+                <div class="flex items-start">
+                    <div class="flex-shrink-0 bg-indigo-100 rounded-full p-2">
+                        <i class="fas fa-chart-bar text-indigo-600"></i>
+                    </div>
+                    <div class="ml-3">
+                        <div class="bg-white p-3 rounded-lg shadow-sm max-w-3xl">
+                            <div class="flex items-center mb-2">
+                                <i class="${sentimentIcon} text-xl mr-2"></i>
+                                <span class="font-semibold capitalize">${sentiment} (${Math.round(confidence * 100)}% confidence)</span>
+                            </div>
+                            <p class="text-gray-700">${explanation}</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            chatContainer.appendChild(resultDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+        
+        // Show loading indicator
+        function showLoading() {
+            const loadingDiv = document.createElement('div');
+            loadingDiv.className = 'chat-message mb-4';
+            loadingDiv.id = 'loading-indicator';
+            
+            loadingDiv.innerHTML = `
+                <div class="flex items-start">
+                    <div class="flex-shrink-0 bg-indigo-100 rounded-full p-2">
+                        <i class="fas fa-robot text-indigo-600"></i>
+                    </div>
+                    <div class="ml-3">
+                        <div class="bg-white p-3 rounded-lg shadow-sm max-w-3xl">
+                            <div class="flex space-x-2">
+                                <div class="w-3 h-3 bg-indigo-400 rounded-full pulse"></div>
+                                <div class="w-3 h-3 bg-indigo-400 rounded-full pulse" style="animation-delay: 0.2s"></div>
+                                <div class="w-3 h-3 bg-indigo-400 rounded-full pulse" style="animation-delay: 0.4s"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            chatContainer.appendChild(loadingDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+        
+        // Hide loading indicator
+        function hideLoading() {
+            const loadingIndicator = document.getElementById('loading-indicator');
+            if (loadingIndicator) {
+                loadingIndicator.remove();
+            }
+        }
+        
+        // Analyze text with API
+        async function analyzeText(text) {
+            showLoading();
+            
+            try {
+                // In a real implementation, this would call your FastAPI endpoint
+                // const response = await fetch(API_URL, {
+                //     method: 'POST',
+                //     headers: {
+                //         'Content-Type': 'application/json',
+                //     },
+                //     body: JSON.stringify({ text: text }),
+                // });
+                // const data = await response.json();
+                
+                // For demo purposes, we'll simulate an API response
+                // Simulate network delay
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                // Mock response - replace with actual API call
+                const mockResponse = {
+                    sentiment: getMockSentiment(text),
+                    confidence: Math.random() * 0.5 + 0.5, // Random confidence between 0.5 and 1.0
+                    explanation: getMockExplanation(text)
+                };
+                
+                hideLoading();
+                addAnalysisResult(mockResponse.sentiment, mockResponse.confidence, mockResponse.explanation);
+            } catch (error) {
+                hideLoading();
+                addMessage("Sorry, I encountered an error while analyzing your text. Please try again later.");
+                console.error('Error:', error);
+            }
+        }
+        
+        // Helper function for mock sentiment analysis
+        function getMockSentiment(text) {
+            const lowerText = text.toLowerCase();
+            const positiveWords = ['love', 'happy', 'great', 'awesome', 'excellent', 'fantastic', 'perfect'];
+            const negativeWords = ['hate', 'terrible', 'awful', 'bad', 'worst', 'disappointed', 'rude'];
+            
+            const positiveCount = positiveWords.filter(word => lowerText.includes(word)).length;
+            const negativeCount = negativeWords.filter(word => lowerText.includes(word)).length;
+            
+            if (positiveCount > negativeCount) return 'positive';
+            if (negativeCount > positiveCount) return 'negative';
+            return 'neutral';
+        }
+        
+        // Helper function for mock explanation
+        function getMockExplanation(text) {
+            const sentiment = getMockSentiment(text);
+            
+            if (sentiment === 'positive') {
+                return "The text contains predominantly positive language expressing satisfaction, happiness, or approval.";
+            } else if (sentiment === 'negative') {
+                return "The text contains predominantly negative language expressing dissatisfaction, anger, or disappointment.";
+            } else {
+                return "The text appears to be neutral, containing mostly factual information without strong emotional language.";
+            }
+        }
+        
+        // Event listeners
+        sendButton.addEventListener('click', () => {
+            const text = messageInput.value.trim();
+            if (text) {
+                addMessage(text, true);
+                analyzeText(text);
+                messageInput.value = '';
+            }
+        });
+        
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendButton.click();
+            }
+        });
+        
+        clearButton.addEventListener('click', () => {
+            chatContainer.innerHTML = `
+                <div class="chat-message mb-4">
+                    <div class="flex items-start">
+                        <div class="flex-shrink-0 bg-indigo-100 rounded-full p-2">
+                            <i class="fas fa-robot text-indigo-600"></i>
+                        </div>
+                        <div class="ml-3">
+                            <div class="bg-white p-3 rounded-lg shadow-sm max-w-3xl">
+                                <p>Hello! I'm your sentiment analysis assistant. Paste or type any text, and I'll analyze its emotional tone for you.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            messageInput.value = '';
+        });
+        
+        sampleButton.addEventListener('click', () => {
+            const randomText = sampleTexts[Math.floor(Math.random() * sampleTexts.length)];
+            messageInput.value = randomText;
+        });
+        
+        // Initialize
+        showPage('home');
+    </script>
+</body>
+</html>
