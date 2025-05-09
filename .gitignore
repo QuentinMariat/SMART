@@ -83,4 +83,6 @@ coverage/
 .cache/
 .cache-loader/
 
+# api key
+src/scrapping/config.json
 
