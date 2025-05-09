@@ -90,3 +90,17 @@ class BPETokenizer:
                 else:
                     i += 1
         return [(token, self.vocab.get(token, self.vocab["<unk>"])) for token in tokens]
+    
+    def __call__(self, texts, padding=True, truncation=True, max_length=512):
+        if isinstance(texts, str):
+            texts = [texts]
+
+        encoded_texts = [self.encode(text) for text in texts]
+        input_ids = [e[:max_length] for e in encoded_texts]
+
+        attention_mask = [[1]*len(ids) for ids in input_ids]
+
+        return {
+            "input_ids": input_ids,
+            "attention_mask": attention_mask
+        }

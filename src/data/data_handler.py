@@ -1,56 +1,85 @@
 # src/data/data_handler.py
-from datasets import load_dataset, Dataset
-from transformers import AutoTokenizer
+
+from datasets import load_dataset
 import torch
-from src.config.settings import MODEL_NAME, DATASET_NAME, LABEL2ID, ID2LABEL, NUM_LABELS # NUM_LABELS est importé ici
+from src.config.settings import MODEL_NAME, DATASET_NAME, NUM_LABELS
 
-def load_and_preprocess_data():
+def load_and_preprocess_data(tokenizer=None, max_train_samples=None):
     print(f"Loading dataset: {DATASET_NAME}")
-    # Chargement du dataset depuis Hugging Face datasets
-    dataset = load_dataset(DATASET_NAME)
+    ds = load_dataset(DATASET_NAME)
 
-    # Correction: Adaptez la fonction pour gérer les lots (batched=True)
-    def create_multi_hot_labels(examples): # Notez le 'examples' au pluriel
-        batch_multi_hot_labels = [] # Pour stocker les vecteurs multi-hot pour tout le lot
+    # 1) Sous-échantillonnage du split train si demandé
+    if max_train_samples is not None:
+        ds["train"] = ds["train"].shuffle(seed=42).select(
+            list(range(min(max_train_samples, len(ds["train"]))))
+        )
+        print(f"→ Train subset: {len(ds['train'])} exemples retenus")
 
-        # Itérer sur chaque *liste de labels* dans le lot
-        for example_labels_list in examples['labels']: # example_labels_list est la liste d'indices pour un seul texte, ex: [1, 5, 2]
-            one_hot_vector = [0.0] * NUM_LABELS # Initialiser le vecteur pour ce texte
-            
-            # Maintenant, itérer sur chaque index de label *dans cette liste*
-            for label_index in example_labels_list: # label_index est maintenant un INT, ex: 1, puis 5, puis 2
-                # AJOUTEZ LA LIGNE DE DEBUG ICI, juste avant la comparaison:
-                print(f"DEBUG: Processing label_index={label_index}, type(NUM_LABELS)={type(NUM_LABELS)}, value(NUM_LABELS)={NUM_LABELS}")
-
-                if 0 <= label_index < NUM_LABELS:
-                    one_hot_vector[label_index] = 1.0
-                else:
-                     # Optionnel: ajouter un avertissement si un indice est hors limites (ne devrait pas arriver avec GoEmotions)
-                     print(f"Warning: Label index {label_index} out of bounds [0, {NUM_LABELS-1}] for batch.")
-                     
-            batch_multi_hot_labels.append(one_hot_vector) # Ajouter le vecteur multi-hot de ce texte au lot
-
-        # Assigner la liste de vecteurs multi-hot au nouveau champ pour le lot
-        examples['labels_multi_hot'] = batch_multi_hot_labels
+    # 2) Création des labels multi-hot
+    def create_multi_hot_labels(examples):
+        batch = []
+        for label_list in examples["labels"]:
+            vec = [0.0] * NUM_LABELS
+            for idx in label_list:
+                if 0 <= idx < NUM_LABELS:
+                    vec[idx] = 1.0
+            batch.append(vec)
+        examples["labels"] = batch
         return examples
 
     print("Creating multi-hot labels...")
-    # Appeler avec batched=True
-    dataset = dataset.map(create_multi_hot_labels, batched=True)
+    ds = ds.map(create_multi_hot_labels, batched=True)
 
-    print(f"Loading tokenizer: {MODEL_NAME}")
-    tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
+    # 3) Préparer le tokenizer
+    if tokenizer is None:
+        from transformers import AutoTokenizer
+        print(f"Loading HF tokenizer: {MODEL_NAME}")
+        tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
+    else:
+        print("Using custom BPE tokenizer")
 
-    def tokenize_function(examples): # Cette fonction est déjà correcte pour batched=True
-        return tokenizer(examples["text"], truncation=True, padding='max_length', max_length=128)
+    # 4) Tokenisation sur chaque split
+    def tokenize_fn(examples):
+        return tokenizer(
+            examples["text"],
+            truncation=True,
+            padding="max_length",
+            max_length=128
+        )
 
-    print("Tokenizing dataset...")
-    tokenized_dataset = dataset.map(tokenize_function, batched=True, remove_columns=['text', 'labels', 'id'])
+    print("Tokenizing train split...")
+    train_tok = ds["train"].map(tokenize_fn, batched=True, remove_columns=["text"])
+    print("Tokenizing validation split...")
+    val_tok   = ds["validation"].map(tokenize_fn, batched=True, remove_columns=["text"])
+    print("Tokenizing test split...")
+    test_tok  = ds["test"].map(tokenize_fn, batched=True, remove_columns=["text"])
 
-    # renommer la colonne 'labels_multi_hot' en 'labels' car le Trainer cherche par défaut une colonne nommée 'labels'
-    tokenized_dataset = tokenized_dataset.rename_column("labels_multi_hot", "labels")
+    # 5) Caster labels en float
+    def cast_labels(examples):
+        examples["labels"] = [[float(v) for v in lab] for lab in examples["labels"]]
+        return examples
 
-    tokenized_dataset.set_format("torch")
+    train_tok = train_tok.map(cast_labels, batched=True)
+    val_tok   = val_tok.map(cast_labels, batched=True)
+    test_tok  = test_tok.map(cast_labels, batched=True)
+
+    # —> ICI : on cast explicitement le format de la colonne labels en float
+    from datasets import ClassLabel, Sequence, Value, Features
+
+    # redéfinis le schéma pour que 'labels' soit un Sequence de float32
+    float_features = Features({
+        **train_tok.features,                # toutes les autres colonnes
+        "labels": Sequence(Value("float32")) # labels devient sequence of float32
+    })
+
+    train_tok = train_tok.cast(float_features)
+    val_tok   = val_tok.cast(float_features)
+    test_tok  = test_tok.cast(float_features)
+
+    # 6) Format PyTorch
+    train_tok.set_format("torch")
+    val_tok.set_format("torch")
+    test_tok.set_format("torch")
 
     print("Data loading and preprocessing complete.")
-    return tokenized_dataset['train'], tokenized_dataset['validation'], tokenized_dataset['test'], tokenizer
+    return train_tok, val_tok, test_tok, tokenizer

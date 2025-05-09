@@ -4,6 +4,7 @@ from pathlib import Path
 import sys
 sys.path.append(str(Path(__file__).resolve().parents[2]))
 from src.tokenizer.bpe_tokenizer import BPETokenizer
+from src.tokenizer.normalizer import normalize_text
 
 def load_corpus_from_csv(csv_path):
     corpus = []
@@ -14,6 +15,7 @@ def load_corpus_from_csv(csv_path):
             # concatène les colonnes 1, 2 et 3 avec des espaces
             convo = " ".join(cell.strip() for cell in row[1:] if cell.strip())
             if convo:
+                convo = normalize_text(convo)
                 corpus.append(convo)
     return corpus
 
@@ -32,22 +34,25 @@ def main():
     corpus = load_corpus_from_csv(csv_path)
     logger.info(f"{len(corpus)} textes chargés depuis le CSV.")
 
+    """
     # Entraîner le tokenizer
     tokenizer.train(corpus)
     tokenizer.save(tokenizer_save_path)
     logger.info("Tokenizer entraîné et sauvegardé.")
-    
     """
+    
+    
     # Charger le tokenizer depuis le fichier JSON
     tokenizer_save_path = "data/tokenizer.json"
     if Path(tokenizer_save_path).exists():
         tokenizer.load(tokenizer_save_path)
         logger.info("Tokenizer chargé depuis le fichier JSON.")
-    """
+    
 
     # Test rapide
     logger.info("Testing tokenizer...")
-    test_text = "Yo homie, u good brotha ? I love u <3"
+    test_text = "welcome Quentin, welcome everyone!"
+    test_text = normalize_text(test_text)
     encoded_text = tokenizer.encode(test_text)
     decoded_text = tokenizer.decode(encoded_text)
     tokens_with_values = tokenizer.get_tokens_with_values(test_text)
