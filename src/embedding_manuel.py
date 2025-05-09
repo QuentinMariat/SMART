@@ -1,48 +1,44 @@
 import torch
-import torch.optim as optim
 import torch.nn as nn
+import torch.optim as optim
 
-# Paramètres
-vocab_size = 5500
-embedding_dim = 256
+class ManualEmbeddingTrainer:
+    def __init__(self, vocab_size, embedding_dim, lr=0.1):
+        self.vocab_size = vocab_size
+        self.embedding_dim = embedding_dim
+        self.embedding_weights = nn.Parameter(torch.randn(vocab_size, embedding_dim, requires_grad=True))
+        self.optimizer = optim.SGD([self.embedding_weights], lr=lr)
 
-# Création manuelle de la matrice d'embedding
-embedding_weights = torch.randn(vocab_size, embedding_dim)  # Initialisation aléatoire
+    def get_embedding(self, token_ids):
+        """Retourne les embeddings pour une liste de token IDs"""
+        return self.embedding_weights[token_ids]
 
-# Exemple de tokens (IDs)
-token_ids = torch.tensor([12, 432, 8, 999])  # IDs entre 0 et vocab_size-1
+    def train_token(self, token_id, target_vector, steps=100, verbose=True):
+        """Entraîne un seul token vers un vecteur cible"""
+        for step in range(steps):
+            self.optimizer.zero_grad()
+            embedded = self.embedding_weights[token_id]  # Shape: (1, embedding_dim)
+            loss = nn.functional.mse_loss(embedded.squeeze(0), target_vector)
+            loss.backward()
+            self.optimizer.step()
+            if verbose and step % 10 == 0:
+                print(f"Step {step} | Loss: {loss.item():.4f}")
+        return self.embedding_weights[token_id].detach()
 
-# Lookup manuel
-embedded_tokens = embedding_weights[token_ids]
+# Exemple d'utilisation
+if __name__ == "__main__":
+    vocab_size = 5500
+    embedding_dim = 256
+    trainer = ManualEmbeddingTrainer(vocab_size, embedding_dim)
 
-# Affiche le vecteur du premier token
-print(embedded_tokens[0])  # Vecteur pour le token avec ID 12
+    # Affiche un vecteur d'embedding avant apprentissage
+    token_ids = torch.tensor([12, 432, 8, 999])
+    print("Embedding initial pour le token 12 :")
+    print(trainer.get_embedding(token_ids)[0])
 
+    # Entraîne le token 12 à ressembler à un vecteur de 1
+    target = torch.ones(embedding_dim)
+    learned_vector = trainer.train_token(torch.tensor([12]), target, steps=100)
 
-# Création manuelle de la matrice d'embedding avec gradients activés
-embedding_weights = nn.Parameter(torch.randn(vocab_size, embedding_dim, requires_grad=True))
-
-# Optimiseur
-optimizer = optim.SGD([embedding_weights], lr=0.1)
-
-# Exemple de token ID et d'objectif fictif (on veut que le vecteur s'approche d'un vecteur cible)
-token_id = torch.tensor([42])
-target_vector = torch.ones(embedding_dim)  # But : rapprocher l'embedding du token 42 de ce vecteur
-
-# Entraînement sur une itération
-for step in range(100):
-    optimizer.zero_grad()
-
-    # Lookup manuel
-    embedded = embedding_weights[token_id]  # Shape: (1, embedding_dim)
-
-    # Calcul d'une perte (ex: MSE entre l'embedding et le vecteur cible)
-    loss = torch.nn.functional.mse_loss(embedded.squeeze(0), target_vector)
-
-    # Backpropagation
-    loss.backward()
-
-    # Mise à jour des poids
-    optimizer.step()
-
-    print(f"Loss: {loss.item()}")
+    print("\nVecteur appris pour le token 12 :")
+    print(learned_vector)
