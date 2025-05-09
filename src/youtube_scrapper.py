@@ -111,7 +111,7 @@ while True:
         break
 
 # Create a directory for the output if it doesn't exist
-output_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "output")
+output_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "output")
 os.makedirs(output_dir, exist_ok=True)
 
 # Create the CSV file path using the video ID for uniqueness
