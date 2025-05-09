@@ -1,0 +1,62 @@
+/* Base styles */
+.sentiment-positive {
+    background-color: #d1fae5;
+    border-left: 4px solid #10b981;
+}
+
+.sentiment-negative {
+    background-color: #fee2e2;
+    border-left: 4px solid #ef4444;
+}
+
+.sentiment-neutral {
+    background-color: #e0e7ff;
+    border-left: 4px solid #6366f1;
+}
+
+.page-transition {
+    transition: all 0.3s ease-in-out;
+}
+
+/* Input styles */
+.url-input-container {
+    position: relative;
+}
+
+.platform-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #4b5563;
+}
+
+.url-input {
+    padding-left: 40px;
+}
+
+.platform-selector {
+    transition: all 0.2s ease;
+}
+
+.platform-selector.active {
+    background-color: #6366f1;
+    color: white;
+}
+
+/* Sentiment bars */
+.sentiment-bar {
+    height: 8px;
+    border-radius: 4px;
+    margin-top: 4px;
+}
+
+.sentiment-summary {
+    transition: all 0.3s ease;
+}
+
+.sentiment-summary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
