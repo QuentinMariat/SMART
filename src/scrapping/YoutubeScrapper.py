@@ -1,5 +1,6 @@
 import requests
 import re
+import sys
 from urllib.parse import urlparse, parse_qs
 import json
 import os
@@ -22,10 +23,43 @@ def get_video_id(url):
 
     return None
 
+def remove_emojis(text):
+    """
+    Supprime les emojis et autres caractères spéciaux d'un texte
+    """
+    # Fonction qui détermine si un caractère doit être conservé
+    def is_valid_char(char):
+        # Conserver uniquement les caractères ASCII imprimables, les espaces, 
+        # et certains caractères de ponctuation courants
+        return char.isascii() and (char.isprintable() or char.isspace())
+    
+    # Filtrer le texte pour ne garder que les caractères valides
+    return ''.join(c for c in text if is_valid_char(c))
 
-VIDEO_URL = 'https://www.youtube.com/watch?v=0uzCUZeBi6c'
+def clean_comment(text):
+    """
+    Nettoie le commentaire en supprimant les emojis et en remplaçant les sauts de ligne
+    """
+    # D'abord supprimer les emojis
+    text = remove_emojis(text)
+    
+    # Supprimer complètement tous les types de sauts de ligne
+    text = re.sub(r'[\r\n]+', ' ', text)
+    
+    # Supprimer les espaces multiples
+    text = re.sub(r' +', ' ', text)
+    
+    return text.strip()
+
+
+# Utiliser l'URL fournie en argument ou une URL par défaut
+if len(sys.argv) > 1:
+    VIDEO_URL = sys.argv[1]
+    print(f"URL de la vidéo: {VIDEO_URL}")
+else:
+    print(f"Aucune URL fournie")
+
 # Load API key from JSON file
-
 
 config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
 try:
@@ -45,25 +79,37 @@ url = 'https://www.googleapis.com/youtube/v3/commentThreads'
 params = {
     'part': 'snippet',
     'videoId': VIDEO_ID,
-    'maxResults': 100,
+    'maxResults': 10000,
     'textFormat': 'plainText',
     'key': API_KEY
 }
 
+print(f"Extracting comments for video ID: {VIDEO_ID}...")
+
 while True:
     response = requests.get(url, params=params)
     data = response.json()
+    
+    if 'error' in data:
+        print(f"API Error: {data['error']['message']}")
+        break
+    
+    if 'items' not in data:
+        print("No comments found or video unavailable.")
+        break
 
     for item in data['items']:
         comment = item['snippet']['topLevelComment']['snippet']['textDisplay']
-        COMMENTS.append(comment)
+        # Nettoyer le commentaire (supprimer emojis + gérer sauts de ligne)
+        processed_comment = clean_comment(comment)
+        if processed_comment:  # Ne pas ajouter les commentaires vides après nettoyage
+            COMMENTS.append(processed_comment)
 
     if 'nextPageToken' in data:
         params['pageToken'] = data['nextPageToken']
     else:
         break
 
-#display the comments
 # Create a directory for the output if it doesn't exist
 output_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "output")
 os.makedirs(output_dir, exist_ok=True)
@@ -71,27 +117,14 @@ os.makedirs(output_dir, exist_ok=True)
 # Create the CSV file path using the video ID for uniqueness
 csv_file_path = os.path.join(output_dir, f"youtube_comments_{VIDEO_ID}.csv")
 
-# Write comments to CSV file
-# Check if file exists
-file_exists = os.path.isfile(csv_file_path)
+# Write comments to CSV file - en utilisant les paramètres par défaut sans guillemets systématiques
+with open(csv_file_path, 'w', newline='', encoding='utf-8') as file:
+    writer = csv.writer(file, quoting=csv.QUOTE_MINIMAL)  # N'utilise des guillemets que quand nécessaire
+    writer.writerow(['Comment'])  # Un seul en-tête pour la colonne de commentaires
+    
+    # Écrire tous les commentaires sans numérotation
+    for comment in COMMENTS:
+        writer.writerow([comment])
 
-with open(csv_file_path, 'a', newline='', encoding='utf-8') as file:
-    writer = csv.writer(file)
-    
-    # Write header only if file is being created
-    if not file_exists:
-        writer.writerow(['Comment Number', 'Comment Text'])  # Header row
-    
-    # Get the current comment count if file exists
-    if file_exists:
-        with open(csv_file_path, 'r', encoding='utf-8') as read_file:
-            comment_count = sum(1 for _ in read_file) - 1  # Subtract 1 for header
-    else:
-        comment_count = 0
-    
-    # Add new comments with continuing numbering
-    for i, comment in enumerate(COMMENTS, start=comment_count+1):
-        writer.writerow([i, comment])
-
-print(f"Total new comments added: {len(COMMENTS)}")
+print(f"Total comments extracted: {len(COMMENTS)}")
 print(f"Comments saved to: {csv_file_path}")
