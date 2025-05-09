@@ -37,7 +37,7 @@ class MultiHeadedAttention(torch.nn.Module):
 
         # fill 0 mask with super small number so it wont affect the softmax weight
         # (batch_size, h, max_len, max_len)
-        scores = scores.masked_fill(mask == 0, -1e9)
+        scores = scores.masked_fill(~mask, -1e9)
 
         # (batch_size, h, max_len, max_len)
         # softmax to put attention weight for all non-pad tokens
