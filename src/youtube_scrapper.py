@@ -52,27 +52,45 @@ def clean_comment(text):
     return text.strip()
 
 
-# Utiliser l'URL fournie en argument ou une URL par défaut
-if len(sys.argv) > 1:
-    VIDEO_URL = sys.argv[1]
-    print(f"URL de la vidéo: {VIDEO_URL}")
+# Vérifier les arguments de ligne de commande
+if len(sys.argv) < 2:
+    print("Erreur: URL de vidéo YouTube requise")
+    print("Usage: python youtube_scrapper.py <URL_YOUTUBE> [CLE_API]")
+    sys.exit(1)
+
+# Premier argument est l'URL de la vidéo
+VIDEO_URL = sys.argv[1]
+print(f"URL de la vidéo: {VIDEO_URL}")
+
+# Deuxième argument (optionnel) est la clé API
+if len(sys.argv) > 2:
+    API_KEY = sys.argv[2]
+    print(f"Clé API fournie en argument: {API_KEY[:4]}...{API_KEY[-4:]}")
 else:
-    print(f"Aucune URL fournie")
+    # Si pas de clé API en argument, essayer de charger depuis le fichier config
+    print("Pas de clé API fournie en argument, recherche dans le fichier config...")
+    config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
+    try:
+        with open(config_path, "r") as file:
+            config = json.load(file)
+        API_KEY = config["youtube"]["apiKey"]
+        print(f"Clé API trouvée dans le fichier config: {API_KEY[:4]}...{API_KEY[-4:]}")
+    except FileNotFoundError:
+        print(f"Fichier de configuration non trouvé: {config_path}")
+        API_KEY = input("Veuillez entrer votre clé API YouTube: ")
+    except KeyError:
+        print("Clé API YouTube introuvable dans le fichier de configuration")
+        API_KEY = input("Veuillez entrer votre clé API YouTube: ")
+    except json.JSONDecodeError:
+        print("Erreur de format dans le fichier config.json")
+        API_KEY = input("Veuillez entrer votre clé API YouTube: ")
 
-# Load API key from JSON file
-
-config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
-try:
-    with open(config_path, "r") as file:
-        config = json.load(file)
-    API_KEY = config["youtube"]["apiKey"]
-except FileNotFoundError:
-    print(f"Config file not found at: {config_path}")
-    API_KEY = input("Please enter your YouTube API Key: ")
-except KeyError:
-    print("YouTube API key not found in config file")
-    API_KEY = input("Please enter your YouTube API Key: ")
+# Extraire l'ID de la vidéo
 VIDEO_ID = get_video_id(VIDEO_URL)
+if not VIDEO_ID:
+    print(f"Erreur: Impossible d'extraire l'ID de la vidéo depuis l'URL: {VIDEO_URL}")
+    sys.exit(1)
+
 COMMENTS = []
 
 url = 'https://www.googleapis.com/youtube/v3/commentThreads'
@@ -84,18 +102,18 @@ params = {
     'key': API_KEY
 }
 
-print(f"Extracting comments for video ID: {VIDEO_ID}...")
+print(f"Extraction des commentaires pour la vidéo ID: {VIDEO_ID}...")
 
 while True:
     response = requests.get(url, params=params)
     data = response.json()
     
     if 'error' in data:
-        print(f"API Error: {data['error']['message']}")
+        print(f"Erreur API: {data['error']['message']}")
         break
     
     if 'items' not in data:
-        print("No comments found or video unavailable.")
+        print("Aucun commentaire trouvé ou vidéo inaccessible.")
         break
 
     for item in data['items']:
@@ -126,5 +144,5 @@ with open(csv_file_path, 'w', newline='', encoding='utf-8') as file:
     for comment in COMMENTS:
         writer.writerow([comment])
 
-print(f"Total comments extracted: {len(COMMENTS)}")
-print(f"Comments saved to: {csv_file_path}")
+print(f"Total des commentaires extraits: {len(COMMENTS)}")
+print(f"Commentaires sauvegardés dans: {csv_file_path}")

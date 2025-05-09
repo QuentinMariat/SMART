@@ -15,23 +15,11 @@ lancer l'évaluation du modèle :
 scrapper les commentaires d'une page youtube (attention : clé API nécessaire) :
 
 ```bash
-python3 src/youtube_scrapper.py "https://www.youtube.com/watch?v=LIEN"
-```
-
-exemple :
-
-```bash
-python3 src/youtube_scrapper.py "https://www.youtube.com/watch?v=CMDPlirF4tg"
+python3 src/youtube_scrapper.py "https://www.youtube.com/watch?v=LIEN_VIDEO" "API_KEY"
 ```
 
 prédire les sentiments globaux :
 
 ```bash
-PYTHONPATH=. python3 src/predict.py src/scrapping/output/youtube_comments_LIEN.csv
-```
-
-exemple :
-
-```bash
-PYTHONPATH=. python3 src/predict.py src/scrapping/output/youtube_comments_CMDPlirF4tg.csv
+PYTHONPATH=. python3 src/predict.py src/scrapping/output/youtube_comments_LIEN_VIDEO.csv
 ```
