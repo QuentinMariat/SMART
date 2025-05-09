@@ -1,3 +1,13 @@
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+results/
+logs/
+eval_results/
+models/__pycache__/
+data/processed/
+data/raw/
+
 # Node modules
 node_modules/
 
@@ -73,4 +83,6 @@ coverage/
 .cache/
 .cache-loader/
 
+# api key
+src/scrapping/config.json
 
