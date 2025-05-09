@@ -76,7 +76,8 @@ function initAnalyzer() {
         // Simulate API call with timeout
         setTimeout(() => {
             // For demo purposes, we'll generate mock data
-            const mockData = generateMockAnalysis();
+            //const mockData = generateMockAnalysis();
+            const mockData = fetchAnalysisFromAPI(url, currentPlatform);
             
             // Display results
             displayResults(mockData);
@@ -106,6 +107,32 @@ function initAnalyzer() {
         });
     });
 }
+
+async function fetchAnalysisFromAPI(url, platform) {
+    const endpoint = platform === 'youtube'
+        ? 'http://localhost:8000/analyze/youtube'
+        : 'http://localhost:8000/analyze/twitter';
+
+    try {
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ url })
+        });
+
+        if (!response.ok) {
+            throw new Error(`API error: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        displayResults(data);  // Your existing frontend display logic
+    } catch (error) {
+        console.error('Error fetching analysis:', error);
+    }
+}
+
 
 // Generate mock analysis data
 function generateMockAnalysis() {
