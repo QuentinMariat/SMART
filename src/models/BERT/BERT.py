@@ -57,7 +57,7 @@ class MultiLabelEmotionClassifier(torch.nn.Module):
         cls_token = self.dropout(cls_token)
         logits = self.classifier(cls_token)   # (batch_size, num_labels)
         probs = self.activation(logits)       # probabilities in [0,1]
-        return probs
+        return probs            # TODO passer à return logits pour BCEWithLogitsLoss
 
 
 class BERTForMultiLabelEmotion(torch.nn.Module):

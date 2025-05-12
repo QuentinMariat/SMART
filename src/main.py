@@ -30,10 +30,12 @@ def collate_fn(batch):
     labels = torch.stack([b['labels'] for b in batch]).float()
     return {'input_ids': input_ids, 'attention_mask': attention_mask, 'labels': labels}
 
-def train_model(device):
+def train_model(device, fast_dev=False):
     # 1. Charger et prétraiter les données
-    train_dataset, val_dataset, test_dataset, tokenizer = load_and_preprocess_data()
-    #train_dataset, val_dataset, test_dataset, tokenizer = load_and_preprocess_data(max_train_samples=5000, max_val_samples=5000, max_test_samples=5000)
+    if fast_dev:
+        train_dataset, val_dataset, test_dataset, tokenizer = load_and_preprocess_data(max_train_samples=5000, max_val_samples=5000, max_test_samples=5000)
+    else:
+        train_dataset, val_dataset, test_dataset, tokenizer = load_and_preprocess_data()
 
     # 2. DataLoaders
     train_loader = DataLoader(train_dataset, batch_size=16, shuffle=True, collate_fn=collate_fn)
@@ -146,7 +148,14 @@ def main():
         choice = input("Choisissez une option : ")
 
         if choice == '1':
-            train_model(device)
+            print("Vitesse entrainement : (1) lent, (2) rapide")
+            speed_choice = input("Choisissez une vitesse : ")
+            if speed_choice == '1':
+                print("Entraînement lent...")
+                train_model(device, fast_dev=False)
+            elif speed_choice == '2':
+                print("Entraînement rapide...")
+                train_model(device, fast_dev=True)
         elif choice == '2':
             print("Entrez les commentaires à évaluer (séparés par un point-virgule) :")
             comments_input = input("Commentaires : ")
