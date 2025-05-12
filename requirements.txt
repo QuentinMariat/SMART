@@ -5,3 +5,4 @@ tokenizers==0.19.1
 torch==2.7.0
 transformers==4.40.0
 youtube-comment-downloader==0.1.76
+datasets
