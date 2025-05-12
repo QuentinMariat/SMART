@@ -1,0 +1,8 @@
+{
+  "do_lower_case": true,
+  "unk_token": "[UNK]",
+  "pad_token": "[PAD]",
+  "cls_token": "[CLS]",
+  "sep_token": "[SEP]",
+  "model_max_length": 512
+}

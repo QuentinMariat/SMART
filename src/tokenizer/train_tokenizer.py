@@ -5,6 +5,8 @@ import sys
 sys.path.append(str(Path(__file__).resolve().parents[2]))
 from src.tokenizer.bpe_tokenizer import BPETokenizer
 from src.tokenizer.normalizer import normalize_text
+from src.tokenizer.wrapped_bpe import WrappedBPETokenizer
+from transformers import PreTrainedTokenizerFast
 
 def load_corpus_from_csv(csv_path):
     """
@@ -33,7 +35,7 @@ def load_corpus_from_csv(csv_path):
     return corpus
 
 def main():
-    tokenizer = BPETokenizer(vocab_size=10000)
+    bpe = BPETokenizer(vocab_size=10000)
     
     # remplace ici par ton chemin vers le CSV
 
@@ -48,11 +50,18 @@ def main():
     corpus = load_corpus_from_csv(csv_path)
     logger.info(f"{len(corpus)} textes chargés depuis le CSV.")
 
-    
+    """
     # Entraîner le tokenizer
-    tokenizer.train(corpus)
-    tokenizer.save(tokenizer_save_path)
+    bpe.train(corpus)
+    bpe.save(tokenizer_save_path)
     logger.info("Tokenizer entraîné et sauvegardé.")
+    """
+    
+    # Charger le tokenizer depuis le fichier JSON
+    bpe_save_path = "data/tokenizer.json"
+    if Path(bpe_save_path).exists():
+        bpe.load(bpe_save_path)
+        logger.info("Tokenizer chargé depuis le fichier JSON.")
     
     """
     # Charger le tokenizer depuis le fichier JSON
@@ -62,17 +71,42 @@ def main():
         logger.info("Tokenizer chargé depuis le fichier JSON.")
     """
 
+    tokenizer = PreTrainedTokenizerFast(
+        vocab_file="data/vocab.txt",
+        merges_file="data/merges.json",
+        unk_token="[UNK]",
+        pad_token="[PAD]",
+        cls_token="[CLS]",
+        sep_token="[SEP]"
+    )
+
     # Test rapide
-    logger.info("Testing tokenizer...")
+    logger.info("Testing bpe...")
     test_text = "welcome Quentin, welcome everyone!"
     test_text = normalize_text(test_text)
-    encoded_text = tokenizer.encode(test_text)
-    decoded_text = tokenizer.decode(encoded_text)
-    tokens_with_values = tokenizer.get_tokens_with_values(test_text)
+    encoded_text = bpe.encode(test_text)
+    decoded_text = bpe.decode(encoded_text)
+    tokens_with_values = bpe.get_tokens_with_values(test_text)
 
     logger.info(f"Tokens with values: {tokens_with_values}")
     logger.info(f"Encoded text '{test_text}': {encoded_text}")
     logger.info(f"Decoded text: {decoded_text}")
+
+    text = "This game looks amazing!"
+    enc = tokenizer(text)
+
+    print("Input IDs:", enc["input_ids"])
+    print("Attention Mask:", enc["attention_mask"])
+    print("Decoded:", tokenizer.decode(enc["input_ids"][0]))
+
+    print("CLS ID:", tokenizer.convert_tokens_to_ids("[CLS]"))
+    print("SEP ID:", tokenizer.convert_tokens_to_ids("[SEP]"))
+    print("PAD ID:", tokenizer.convert_tokens_to_ids("[PAD]"))
+    print("UNK ID:", tokenizer.convert_tokens_to_ids("[UNK]"))
+
+    batch = tokenizer(["I love this trailer", "Horrible experience"], padding=True, truncation=True)
+    print(batch)
+
 
 if __name__ == "__main__":
     main()
