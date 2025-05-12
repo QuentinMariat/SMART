@@ -1,6 +1,7 @@
 import torch
 import os, sys
 from pathlib import Path
+sys.path.append(str(Path(__file__).resolve().parents[1]))
 
 from src.config.settings import TRAINING_ARGS, ID2LABEL, PREDICTION_PROB_THRESHOLD
 from src.tokenizer.bpe_tokenizer import BPETokenizer
