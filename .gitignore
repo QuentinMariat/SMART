@@ -84,3 +84,7 @@ coverage/
 .cache-loader/
 
 
+# Modeles de machine learning
+*.pt
+
+
