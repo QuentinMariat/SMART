@@ -13,7 +13,7 @@ class BERTTrainer:
         self.device = device
         self.criterion = nn.BCELoss()  # car le modèle renvoie des probas (sigmoid)
 
-    def train(self, epochs=3, lr=2e-5, weight_decay=0.01):
+    def train(self, epochs=3, lr=2e-5, weight_decay=0.01, file_name='bert_multilabel.pt'):
       optimizer = optim.AdamW(self.model.parameters(), lr=lr, weight_decay=weight_decay)
 
       for epoch in range(epochs):
@@ -42,8 +42,9 @@ class BERTTrainer:
 
           self.evaluate()
 
-      torch.save(self.model.state_dict(), 'bert_multilabel.pt')
-      print("✅ Modèle sauvegardé sous 'bert_multilabel.pt'")
+      torch.save(self.model.state_dict(), file_name)
+      print(f"✅ Modèle sauvegardé sous '{file_name}'")
+      
 
     def evaluate(self):
         self.model.eval()
