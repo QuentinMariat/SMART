@@ -60,7 +60,7 @@ def train_model():
 
     # 1) Charger ton BPE et wrapper
     bpe = BPETokenizer(vocab_size=5000)
-    bpe.load("data/tokenizer.json")
+    bpe.load("data/tokenizer_files/tokenizer.json")
     tokenizer = WrappedBPETokenizer(bpe)
 
     # 2) Charger les datasets (train, val, test) avec TON tokenizer
