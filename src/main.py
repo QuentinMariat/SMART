@@ -32,7 +32,8 @@ def collate_fn(batch):
 
 def train_model(device):
     # 1. Charger et prétraiter les données
-    train_dataset, val_dataset, test_dataset, tokenizer = load_and_preprocess_data(max_train_samples=5000, max_val_samples=5000, max_test_samples=5000)
+    train_dataset, val_dataset, test_dataset, tokenizer = load_and_preprocess_data()
+    #train_dataset, val_dataset, test_dataset, tokenizer = load_and_preprocess_data(max_train_samples=5000, max_val_samples=5000, max_test_samples=5000)
 
     # 2. DataLoaders
     train_loader = DataLoader(train_dataset, batch_size=16, shuffle=True, collate_fn=collate_fn)
@@ -120,6 +121,7 @@ def create_comments_dataloader(comments, tokenizer, device):
 
 def main():
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    print(f"\033[93mUtilisation de l'appareil : {device}\033[0m")
     #TEMP :
     train_dataset, val_dataset, test_dataset, tokenizer = load_and_preprocess_data(max_train_samples=5000, max_val_samples=5000, max_test_samples=5000)
 
