@@ -7,22 +7,36 @@ from src.tokenizer.bpe_tokenizer import BPETokenizer
 from src.tokenizer.normalizer import normalize_text
 
 def load_corpus_from_csv(csv_path):
+    """
+    Lit un CSV à une colonne où chaque ligne est un commentaire brut,
+    applique la normalisation et renvoie la liste des textes.
+    """
     corpus = []
     with open(csv_path, newline="", encoding="utf-8") as f:
         reader = csv.reader(f)
-        headers = next(reader, None)
+        # Si votre CSV comporte une en-tête, décommentez la ligne suivante :
+        # headers = next(reader, None)
+
         for row in reader:
-            # concatène les colonnes 1, 2 et 3 avec des espaces
-            convo = " ".join(cell.strip() for cell in row[1:] if cell.strip())
-            if convo:
-                convo = normalize_text(convo)
-                corpus.append(convo)
+            # Assure-toi qu'il y a bien au moins une colonne
+            if not row:
+                continue
+            text = row[0].strip()
+            if not text:
+                continue
+
+            # Normalise le texte (minuscules, suppression accents, ponctuation…)
+            normalized = normalize_text(text)
+            corpus.append(normalized)
+
+    logger.info(f"{len(corpus)} commentaires chargés et normalisés depuis {csv_path}.")
     return corpus
 
 def main():
-    tokenizer = BPETokenizer(vocab_size=5000)
+    tokenizer = BPETokenizer(vocab_size=6000)
     
     # remplace ici par ton chemin vers le CSV
+
     csv_path = "data/raw/casual_data_windows.csv"  
     tokenizer_save_path = "data/tokenizer_files/tokenizer.json"
 
@@ -40,8 +54,7 @@ def main():
     tokenizer.save(tokenizer_save_path)
     logger.info("Tokenizer entraîné et sauvegardé.")
     """
-    
-    
+
     # Charger le tokenizer depuis le fichier JSON
     tokenizer_save_path = "data/tokenizer_files/tokenizer.json"
     if Path(tokenizer_save_path).exists():

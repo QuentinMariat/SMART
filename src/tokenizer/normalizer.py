@@ -20,6 +20,9 @@ def normalize_text(text: str) -> str:
     text = unicodedata.normalize("NFD", text)
     text = "".join(ch for ch in text if unicodedata.category(ch) != "Mn")
 
+    #Supprimer les caractères répétés trop souvent
+    text = re.sub(r"(.)\1{3,}", r"\1\1\1", text)
+
     # 3) remplacer URL éventuelles
     text = re.sub(r"https?://\S+|www\.\S+", "<URL>", text)
 

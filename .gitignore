@@ -4,8 +4,6 @@
 results/checkpoint-*/
 logs/
 eval_results/
-data/processed/
-data/raw/
 output/
 
 # Node modules
