@@ -33,7 +33,7 @@ def load_corpus_from_csv(csv_path):
     return corpus
 
 def main():
-    tokenizer = BPETokenizer(vocab_size=6000)
+    tokenizer = BPETokenizer(vocab_size=10000)
     
     # remplace ici par ton chemin vers le CSV
 
@@ -48,19 +48,19 @@ def main():
     corpus = load_corpus_from_csv(csv_path)
     logger.info(f"{len(corpus)} textes chargés depuis le CSV.")
 
-    """
+    
     # Entraîner le tokenizer
     tokenizer.train(corpus)
     tokenizer.save(tokenizer_save_path)
     logger.info("Tokenizer entraîné et sauvegardé.")
+    
     """
-
     # Charger le tokenizer depuis le fichier JSON
     tokenizer_save_path = "data/tokenizer_files/tokenizer.json"
     if Path(tokenizer_save_path).exists():
         tokenizer.load(tokenizer_save_path)
         logger.info("Tokenizer chargé depuis le fichier JSON.")
-    
+    """
 
     # Test rapide
     logger.info("Testing tokenizer...")
