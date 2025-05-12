@@ -4,7 +4,6 @@ import os
 # Display a warning about Twitter API rate limits
 print("WARNING: The Twitter API only allows 100 comments per day with the standard API access.")
 
-# ✅ CONFIGURATION
 config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
 try:
     with open(config_path, "r") as file:
@@ -51,7 +50,6 @@ def fetch_comments():
 
     return comments
 
-# ✅ RÉSULTAT
 comments = fetch_comments()
 for i, comment in enumerate(comments, 1):
     print(f"{i}. @{comment['author_id']} - {comment['created_at']}\n   {comment['text']}\n")
