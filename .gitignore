@@ -1,12 +1,13 @@
 __pycache__/
 *.pyc
 .ipynb_checkpoints/
-results/
+results/checkpoint-*/
 logs/
 eval_results/
 models/__pycache__/
 data/processed/
 data/raw/
+output/
 
 # Node modules
 node_modules/
