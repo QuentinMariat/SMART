@@ -40,7 +40,7 @@ X_train_tfidf = vectorizer.fit_transform(X_train)
 X_test_tfidf = vectorizer.transform(X_test)
 
 # Classifieur multi-label
-base_rf = RandomForestClassifier(n_estimators=100, random_state=42, n_jobs=-1)
+base_rf = RandomForestClassifier(n_estimators=1000, random_state=42, n_jobs=-1)
 multi_label_rf = MultiOutputClassifier(base_rf)
 
 # Entraînement
