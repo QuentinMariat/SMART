@@ -89,3 +89,7 @@ src/scrapping/config.json
 #models
 *.pt
 
+# Modeles de machine learning
+*.pt
+
+
