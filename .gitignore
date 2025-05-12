@@ -86,3 +86,6 @@ coverage/
 # api key
 src/scrapping/config.json
 
+#models
+*.pt
+
