@@ -51,7 +51,7 @@ def main(model_path):
 
     # 1) Charger et wrapper ton BPE tokenizer
     bpe = BPETokenizer(vocab_size=5000)
-    bpe.load("data/tokenizer.json")
+    bpe.load("data/tokenizer_files/tokenizer.json")
     tokenizer = WrappedBPETokenizer(bpe)
 
     # 2) Charger et prétraiter les données en passant TON tokenizer
