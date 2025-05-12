@@ -56,11 +56,11 @@ class WrappedBPETokenizer(PreTrainedTokenizerBase):
         
 
 def train_model():
-    print("🔄 Starting training process…")
+    print("Starting training process…")
 
     # 1) Charger ton BPE et wrapper
     bpe = BPETokenizer(vocab_size=5000)
-    bpe.load("data/tokenizer.json")
+    bpe.load("data/tokenizer_files/tokenizer.json")
     tokenizer = WrappedBPETokenizer(bpe)
 
     # 2) Charger les datasets (train, val, test) avec TON tokenizer
@@ -99,15 +99,15 @@ def train_model():
     )
 
     # 6) Lancer l'entraînement
-    print("▶️ Training started...")
+    print("Training started...")
     trainer.train()
-    print("✅ Training finished.")
+    print("Training finished.")
 
     # 7) Sauvegarder le meilleur modèle
     final_path = Path(TRAINING_ARGS["output_dir"]) / "final_model"
-    print(f"💾 Saving final model to {final_path}")
+    print(f"Saving final model to {final_path}")
     trainer.save_model(final_path)
-    print("🎉 Final model saved.")
+    print("Final model saved.")
 
 if __name__ == "__main__":
     train_model()

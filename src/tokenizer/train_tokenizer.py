@@ -24,7 +24,7 @@ def main():
     
     # remplace ici par ton chemin vers le CSV
     csv_path = "data/raw/casual_data_windows.csv"  
-    tokenizer_save_path = "data/tokenizer.json"
+    tokenizer_save_path = "data/tokenizer_files/tokenizer.json"
 
     if not Path(csv_path).exists():
         logger.error(f"Fichier {csv_path} introuvable.")
@@ -43,7 +43,7 @@ def main():
     
     
     # Charger le tokenizer depuis le fichier JSON
-    tokenizer_save_path = "data/tokenizer.json"
+    tokenizer_save_path = "data/tokenizer_files/tokenizer.json"
     if Path(tokenizer_save_path).exists():
         tokenizer.load(tokenizer_save_path)
         logger.info("Tokenizer chargé depuis le fichier JSON.")
