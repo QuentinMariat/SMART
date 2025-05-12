@@ -1,7 +1,11 @@
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.dirname(os.path.dirname(__file__))))
+
 import torch
 from torch.utils.data import DataLoader
 from transformers import AutoModel
-from src.data.data_handler import load_and_preprocess_data  # utilise ta fonction préparée
+from src.data.data_handler import load_and_preprocess_data
 from models.BERT.BERTTrainer import BERTTrainer  # ta classe Trainer existante
 from models.BERT.BERT import BERTForMultiLabelEmotion
 

@@ -19,8 +19,8 @@ class PositionalEmbedding(torch.nn.Module):
                 pe[pos, i + 1] = math.cos(pos / (10000 ** ((2 * (i + 1))/d_model)))
 
         # include the batch size
-        self.pe = pe.unsqueeze(0)   
-        self.register_buffer('pe', pe)
+        # self.pe = pe.unsqueeze(0)   
+        self.register_buffer('pe', pe.unsqueeze(0))
 
     def forward(self, x):
         return self.pe[:, :x.size(1)].to(x.device)
@@ -34,7 +34,7 @@ class BERTEmbedding(torch.nn.Module):
         sum of all these features are output of BERTEmbedding
     """
 
-    def __init__(self, vocab_size, embed_size, seq_len=64, dropout=0.1):
+    def __init__(self, vocab_size, embed_size, seq_len=128, dropout=0.1):
         """
         :param vocab_size: total vocab size
         :param embed_size: embedding size of token embedding
