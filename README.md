@@ -57,7 +57,7 @@ L'application propose une interface web permettant de charger un lien YouTube et
 
 ### 🚀 Lancer l'application
 
-Dans un premier temps, il faut ajouter le fichier avec les clefs d'API à l'adresse suivante : src\WebApp\backend\scrapping\config.json
+Dans un premier temps, il faut remplacer les clefs d'API dans le fichier : src\WebApp\backend\scrapping\config.json
 
 Il faut ensuite se placer à l'emplacement des fichiers du backend
 ```bash
