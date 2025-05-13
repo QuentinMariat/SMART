@@ -8,6 +8,7 @@ from transformers import AutoModel
 from src.data.data_handler import load_and_preprocess_data
 from models.bert.bert_trainer import BERTTrainer  # ta classe Trainer existante
 from models.bert.bert import BERTForMultiLabelEmotion
+from models.bert.bert_pretrainer import BERTForMLMPretraining
 from transformers import AutoTokenizer
 from src.config.settings import MODEL_NAME, EMOTION_LABELS
 
@@ -62,6 +63,38 @@ def train_model(device, fast_dev=False):
         print(f"Sample {i}: Predicted labels = {pred}")
 
     trainer.evaluate_on_test(test_loader)
+
+def pretrain_model(device, fast_dev=False):
+    # 1. Charger et prétraiter les données
+    if fast_dev:
+        train_dataset, val_dataset, test_dataset, tokenizer = load_and_preprocess_data(max_train_samples=5000, max_val_samples=5000, max_test_samples=5000)
+    else:
+        train_dataset, val_dataset, test_dataset, tokenizer = load_and_preprocess_data()
+
+    # 2. DataLoaders
+    train_loader = DataLoader(train_dataset, batch_size=16, shuffle=True, collate_fn=collate_fn)
+    val_loader = DataLoader(val_dataset, batch_size=16, collate_fn=collate_fn)
+
+    # 3. Modèle
+    vocab_size = tokenizer.vocab_size
+    model = BERTForMLMPretraining(vocab_size=vocab_size)
+
+    # 4. Trainer
+    pretrainer = BERTTrainer(model, train_loader, val_loader, device=device)
+
+    # 5. Entraînement
+    pretrainer.train(epochs=3, lr=2e-5, weight_decay=0.01)
+
+    # 8. Test (évaluation sur les données de test)
+    test_loader = DataLoader(test_dataset, batch_size=16, collate_fn=collate_fn)
+    predictions = pretrainer.predict(test_loader)
+
+    # Exemple d'affichage pour les 5 premières prédictions
+    print("\nExemples de prédictions :")
+    for i, pred in enumerate(predictions[:5]):
+        print(f"Sample {i}: Predicted labels = {pred}")
+
+    pretrainer.evaluate_on_test(test_loader)
 
 def predict_single_comment(comment, model, tokenizer, device, threshold=0.5):
     model.eval()
@@ -134,11 +167,11 @@ def main():
     # 3. Modèle
     num_labels = train_dataset[0]['labels'].shape[0]  # inférer le nombre de labels
     vocab_size = tokenizer.vocab_size
-    model = BERTForMultiLabelEmotion(vocab_size=vocab_size, num_labels=num_labels)
-
+    model = BERTForMLMPretraining(vocab_size=vocab_size)
     # 4. Trainer
-    trainer = BERTTrainer(model, train_loader, val_loader, num_labels, device=device)
+    pretrainer = BERTTrainer(model, train_loader, val_loader, num_labels, device=device)
 
+    trainer = BERTTrainer(model, train_loader, val_loader, num_labels, device=device)
 
 
     while True:

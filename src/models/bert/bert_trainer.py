@@ -4,6 +4,8 @@ import torch.optim as optim
 from sklearn.metrics import f1_score, accuracy_score
 from tqdm import tqdm
 from transformers import get_linear_schedule_with_warmup
+from src.data.data_preprocess_mlm import mask_tokens
+
 
 from src.config.settings import EMOTION_THRESHOLDS
 
@@ -23,8 +25,7 @@ class BERTTrainer:
         scheduler = get_linear_schedule_with_warmup(
         optimizer,
         num_warmup_steps=int(0.1 * total_steps),
-        num_training_steps=total_steps
-)
+        num_training_steps=total_steps)
 
         for epoch in range(epochs):
           print(f'Epoch {epoch + 1}/{epochs}')
@@ -55,7 +56,42 @@ class BERTTrainer:
 
         torch.save(self.model.state_dict(), file_name)
         print(f"✅ Modèle sauvegardé sous '{file_name}'")
-      
+    
+    def pretrain(self, tokenizer, epochs=3, lr=2e-5, weight_decay=0.01, file_name='bert_pretrain.pt'):
+        optimizer = optim.AdamW(self.model.parameters(), lr=lr, weight_decay=weight_decay)
+        total_steps = len(self.train_loader) * epochs
+        scheduler = get_linear_schedule_with_warmup(
+        optimizer,
+        num_warmup_steps=int(0.1 * total_steps),
+        num_training_steps=total_steps)
+
+        for epoch in range(epochs):
+            print(f'Epoch {epoch + 1}/{epochs}')
+            self.model.train()
+            train_loss = 0.0
+
+            pbar = tqdm(self.train_loader, desc="Training", leave=False)
+            for batch in pbar:
+                input_ids = batch["input_ids"]             # (batch, seq_len)
+                token_type_ids = batch.get("token_type_ids")
+                inputs_masked, mlm_labels = mask_tokens(input_ids.clone(), tokenizer)
+
+                # Forward
+                logits_mlm = self.model(inputs_masked, token_type_ids)
+                loss = nn.CrossEntropyLoss(ignore_index=-100)(
+                    logits_mlm.view(-1, self.model.vocab_size),
+                    mlm_labels.view(-1)
+                )
+
+                # Backward
+                loss.backward()
+                optimizer.step()
+                scheduler.step()
+                optimizer.zero_grad()
+
+        # Sauvegarde périodique
+        torch.save(self.model.state_dict(), file_name)
+        print(f"✅ Modèle pré entrainé sauvegardé sous '{file_name}'")
 
     def evaluate(self):
         self.model.eval()
