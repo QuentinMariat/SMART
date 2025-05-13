@@ -54,7 +54,7 @@ def train_model():
 
     # sauvegarder le modèle final
     # le Trainer sauvegarde déjà automatiquement le meilleur modèle dans le répertoire output_dir spécifié. Vous pouvez spécifier un sous-dossier si vous voulez.
-    final_model_path = f"{TRAINING_ARGS['output_dir']}/final_model"
+    final_model_path = f"{TRAINING_ARGS['output_dir']}/mvp_model"
     print(f"Saving final model to {final_model_path}")
     trainer.save_model(final_model_path)
     print("Final model saved.")
