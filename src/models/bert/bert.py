@@ -1,6 +1,6 @@
 import torch
-from models.bert.bert_embedding import BERTEmbedding
-from models.bert.attention_layer import EncoderLayer
+from models.BERT.BERTEmbedding import BERTEmbedding
+from models.BERT.AttentionLayer import EncoderLayer
 
 class BERT(torch.nn.Module):
     def __init__(self, vocab_size, d_model=768, n_layers=12, heads=12, dropout=0.1):
@@ -57,7 +57,7 @@ class MultiLabelEmotionClassifier(torch.nn.Module):
         cls_token = self.dropout(cls_token)
         logits = self.classifier(cls_token)   # (batch_size, num_labels)
         probs = self.activation(logits)       # probabilities in [0,1]
-        return probs
+        return probs            # TODO passer à return logits pour BCEWithLogitsLoss
 
 
 class BERTForMultiLabelEmotion(torch.nn.Module):
