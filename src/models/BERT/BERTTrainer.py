@@ -3,6 +3,8 @@ import torch.nn as nn
 import torch.optim as optim
 from sklearn.metrics import f1_score, accuracy_score
 from tqdm import tqdm
+from torchvision.ops import sigmoid_focal_loss
+
 
 class BERTTrainer:
     def __init__(self, model, train_loader, val_loader, num_labels, device='cuda'):
@@ -11,7 +13,13 @@ class BERTTrainer:
         self.val_loader = val_loader
         self.num_labels = num_labels
         self.device = device
-        self.criterion = nn.BCELoss()  # car le modèle renvoie des probas (sigmoid)
+        self.criterion = lambda logits, targets: sigmoid_focal_loss(
+            inputs=logits,  # logits bruts
+            targets=targets.float(),  # multi-hot vector de float
+            alpha=0.25,
+            gamma=2.0,
+            reduction="mean"
+        )
 
     def train(self, epochs=3, lr=2e-5, weight_decay=0.01, file_name='bert_multilabel.pt'):
       optimizer = optim.AdamW(self.model.parameters(), lr=lr, weight_decay=weight_decay)
