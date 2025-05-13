@@ -21,7 +21,7 @@ app = FastAPI(title="Sentiment API")
 from fastapi.middleware.cors import CORSMiddleware
 import sys
 import os
-from scrapping.YoutubeScrapper import *
+from scrapper.youtube import *
 import csv
 from datetime import datetime
 
