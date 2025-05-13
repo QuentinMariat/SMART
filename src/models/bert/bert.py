@@ -26,14 +26,14 @@ class BERT(torch.nn.Module):
             for _ in range(n_layers)
         ])
 
-    def forward(self, x, segment_info=None):
+    def forward(self, x):
         # attention mask for padded tokens
         # mask shape: (batch_size, 1, seq_len, seq_len)
         #mask = (x > 0).unsqueeze(1).repeat(1, x.size(1), 1).unsqueeze(1)
         mask = (x > 0).unsqueeze(1).unsqueeze(2)
 
         # embedding lookup + add segment embeddings if provided
-        x = self.embedding(x, segment_info)
+        x = self.embedding(x)
 
         # pass through each Transformer layer
         for encoder in self.encoder_blocks:
@@ -72,9 +72,9 @@ class BERTForMultiLabelEmotion(torch.nn.Module):
         # Classification head
         self.classifier = MultiLabelEmotionClassifier(d_model, num_labels, dropout)
 
-    def forward(self, input_ids, segment_info=None):
+    def forward(self, input_ids):
         # Encode inputs
-        sequence_output = self.bert(input_ids, segment_info)
+        sequence_output = self.bert(input_ids)
         # Predict multi-label emotions
         return self.classifier(sequence_output)
     

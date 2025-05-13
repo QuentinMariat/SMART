@@ -19,7 +19,6 @@ class PositionalEmbedding(torch.nn.Module):
                 pe[pos, i + 1] = math.cos(pos / (10000 ** ((2 * (i + 1))/d_model)))
 
         # include the batch size
-        # self.pe = pe.unsqueeze(0)   
         self.register_buffer('pe', pe.unsqueeze(0))
 
     def forward(self, x):
@@ -30,7 +29,6 @@ class BERTEmbedding(torch.nn.Module):
     BERT Embedding which is consisted with under features
         1. TokenEmbedding : normal embedding matrix
         2. PositionalEmbedding : adding positional information using sin, cos
-        2. SegmentEmbedding : adding sentence segment info, (sent_A:1, sent_B:2)
         sum of all these features are output of BERTEmbedding
     """
 
@@ -40,20 +38,16 @@ class BERTEmbedding(torch.nn.Module):
         :param embed_size: embedding size of token embedding
         :param dropout: dropout rate
         """
-
         super().__init__()
         self.embed_size = embed_size
         # (m, seq_len) --> (m, seq_len, embed_size)
         # padding_idx is not updated during training, remains as fixed pad (0)
         self.token = torch.nn.Embedding(vocab_size, embed_size, padding_idx=0)
-        self.segment = torch.nn.Embedding(3, embed_size, padding_idx=0)
         self.position = PositionalEmbedding(d_model=embed_size, max_len=seq_len)
         self.dropout = torch.nn.Dropout(p=dropout)
        
-    def forward(self, sequence, segment_label):
-        if segment_label is None:
-          segment_label = torch.zeros_like(sequence)
-        x = self.token(sequence) + self.position(sequence) + self.segment(segment_label)
+    def forward(self, sequence):
+        x = self.token(sequence) + self.position(sequence)
         return self.dropout(x)
 
 class ManualEmbeddingTrainer:
@@ -79,20 +73,21 @@ class ManualEmbeddingTrainer:
                 print(f"Step {step} | Loss: {loss.item():.4f}")
         return self.embedding_weights[token_id].detach()
 
-# Exemple d'utilisation
 if __name__ == "__main__":
     vocab_size = 5500
-    embedding_dim = 256
-    trainer = ManualEmbeddingTrainer(vocab_size, embedding_dim)
+    embed_size = 256
+    seq_len = 10  # Longueur de la séquence
 
-    # Affiche un vecteur d'embedding avant apprentissage
-    token_ids = torch.tensor([12, 432, 8, 999])
-    print("Embedding initial pour le token 12 :")
-    print(trainer.get_embedding(token_ids)[0])
+    # Crée un batch de 1 séquence de longueur 10
+    token_ids = torch.tensor([[12, 432, 8, 999, 1, 234, 77, 321, 1024, 45]])  # (1, 10)
+    segment_ids = torch.zeros_like(token_ids)  # Tous dans le segment 0
 
-    # Entraîne le token 12 à ressembler à un vecteur de 1
-    target = torch.ones(embedding_dim)
-    learned_vector = trainer.train_token(torch.tensor([12]), target, steps=100)
+    # Initialise l'embedding
+    bert_embedding = BERTEmbedding(vocab_size=vocab_size, embed_size=embed_size, seq_len=seq_len)
 
-    print("\nVecteur appris pour le token 12 :")
-    print(learned_vector)
+    # Calcule les embeddings
+    embeddings = bert_embedding(token_ids)  # (1, 10, 256)
+
+    # Affiche le premier vecteur d'embedding
+    print("Premier vecteur d'embedding :")
+    print(embeddings[0, 0])  # Shape: (256,)
