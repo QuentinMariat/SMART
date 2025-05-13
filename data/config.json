@@ -1,4 +1,5 @@
 {
+  "model_type": "wrapped_bpe",
   "do_lower_case": true,
   "unk_token": "[UNK]",
   "pad_token": "[PAD]",

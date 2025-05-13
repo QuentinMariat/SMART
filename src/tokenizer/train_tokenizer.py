@@ -7,6 +7,7 @@ from src.tokenizer.bpe_tokenizer import BPETokenizer
 from src.tokenizer.normalizer import normalize_text
 from src.tokenizer.wrapped_bpe import WrappedBPETokenizer
 from transformers import PreTrainedTokenizerFast
+from transformers import AutoTokenizer
 
 def load_corpus_from_csv(csv_path):
     """
@@ -63,22 +64,9 @@ def main():
         bpe.load(bpe_save_path)
         logger.info("Tokenizer chargé depuis le fichier JSON.")
     
-    """
-    # Charger le tokenizer depuis le fichier JSON
-    tokenizer_save_path = "data/tokenizer_files/tokenizer.json"
-    if Path(tokenizer_save_path).exists():
-        tokenizer.load(tokenizer_save_path)
-        logger.info("Tokenizer chargé depuis le fichier JSON.")
-    """
 
-    tokenizer = PreTrainedTokenizerFast(
-        vocab_file="data/vocab.txt",
-        merges_file="data/merges.json",
-        unk_token="[UNK]",
-        pad_token="[PAD]",
-        cls_token="[CLS]",
-        sep_token="[SEP]"
-    )
+    # Wrapper pour HuggingFace
+    tokenizer = WrappedBPETokenizer(bpe, do_lower_case=True)
 
     # Test rapide
     logger.info("Testing bpe...")
@@ -97,15 +85,28 @@ def main():
 
     print("Input IDs:", enc["input_ids"])
     print("Attention Mask:", enc["attention_mask"])
-    print("Decoded:", tokenizer.decode(enc["input_ids"][0]))
+    print("Decoded:", tokenizer.decode(enc["input_ids"]))
 
     print("CLS ID:", tokenizer.convert_tokens_to_ids("[CLS]"))
     print("SEP ID:", tokenizer.convert_tokens_to_ids("[SEP]"))
     print("PAD ID:", tokenizer.convert_tokens_to_ids("[PAD]"))
     print("UNK ID:", tokenizer.convert_tokens_to_ids("[UNK]"))
 
-    batch = tokenizer(["I love this trailer", "Horrible experience"], padding=True, truncation=True)
-    print(batch)
+    batch = tokenizer(
+    ["I love this trailer", "Horrible experience"],
+    padding=True, truncation=True, max_length=10
+    )
+
+    for seq_ids, tok_ids, mask in zip(
+        batch["input_ids"],
+        batch["token_type_ids"],
+        batch["attention_mask"]
+    ):
+        print("IDs :", seq_ids)
+        print("TT  :", tok_ids)
+        print("AM  :", mask)
+        print("Dec :", tokenizer.decode(seq_ids))
+        print("---")
 
 
 if __name__ == "__main__":
