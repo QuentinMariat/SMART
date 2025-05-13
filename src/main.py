@@ -1,11 +1,13 @@
 import sys
 import os
+
 sys.path.append(os.path.abspath(os.path.dirname(os.path.dirname(__file__))))
 
 import torch
 from torch.utils.data import DataLoader
 from transformers import AutoModel
-from src.data.data_handler import load_and_preprocess_data
+from src.models.bert.bert_dataset import WikipediaMLMDataset
+from src.data.data_handler import preprocess_dataset, preprocess_wikipedia_mlm, load_tokenizer, loading_dataset
 from models.bert.bert_trainer import BERTTrainer  # ta classe Trainer existante
 from models.bert.bert import BERTForMultiLabelEmotion, BERTForMLMPretraining
 from transformers import AutoTokenizer
@@ -25,17 +27,53 @@ class SimpleClassifier(torch.nn.Module):
         return logits
 
 def collate_fn(batch):
-    input_ids = torch.stack([b['input_ids'] for b in batch])
-    attention_mask = torch.stack([b['attention_mask'] for b in batch])
-    labels = torch.stack([b['labels'] for b in batch]).float()
-    return {'input_ids': input_ids, 'attention_mask': attention_mask, 'labels': labels}
+    batch_dict = {
+        'input_ids': torch.stack([b['input_ids'] for b in batch]),
+    }
+
+    if 'token_type_ids' in batch[0]:
+        batch_dict['token_type_ids'] = torch.stack([b['token_type_ids'] for b in batch])
+    if 'attention_mask' in batch[0]:
+        batch_dict['attention_mask'] = torch.stack([b['attention_mask'] for b in batch])
+    if 'labels' in batch[0]:
+        batch_dict['labels'] = torch.stack([b['labels'] for b in batch]).float()
+
+    return batch_dict
+
+
+
+# Version plus clean avec 2 fonctions mais flm de tout changer la
+# def collate_fn_pretrain(batch):
+#     return {
+#         'input_ids': torch.stack([b['input_ids'] for b in batch]),
+#         'token_type_ids': torch.stack([b['token_type_ids'] for b in batch]) if 'token_type_ids' in batch[0] else None,
+#     }
+
+# def collate_fn_classification(batch):
+#     return {
+#         'input_ids': torch.stack([b['input_ids'] for b in batch]),
+#         'token_type_ids': torch.stack([b['token_type_ids'] for b in batch]) if 'token_type_ids' in batch[0] else None,
+#         'labels': torch.stack([b['labels'] for b in batch]).float(),
+#     }
+
+
 
 def train_model(device, fast_dev=False):
     # 1. Charger et prétraiter les données
     if fast_dev:
-        train_dataset, val_dataset, test_dataset, tokenizer = load_and_preprocess_data(max_train_samples=5000, max_val_samples=5000, max_test_samples=5000)
+        # Load tokenizer
+        tokenizer = load_tokenizer()
+        # Load dataset with subsampling
+        dataset = loading_dataset(max_train_samples=5000, max_val_samples=5000, max_test_samples=5000)
+        # Preprocess dataset
+        train_dataset, val_dataset, test_dataset, tokenizer = preprocess_dataset(dataset, tokenizer)
     else:
-        train_dataset, val_dataset, test_dataset, tokenizer = load_and_preprocess_data()
+        # Load tokenizer
+        tokenizer = load_tokenizer()
+        # Load dataset with subsampling
+        dataset = loading_dataset(max_train_samples=5000, max_val_samples=5000, max_test_samples=5000)
+        # Preprocess dataset
+        train_dataset, val_dataset, test_dataset, tokenizer = preprocess_dataset(dataset, tokenizer)
 
     # 2. DataLoaders
     train_loader = DataLoader(train_dataset, batch_size=16, shuffle=True, collate_fn=collate_fn)
@@ -64,11 +102,8 @@ def train_model(device, fast_dev=False):
     trainer.evaluate_on_test(test_loader)
 
 def pretrain_model(device, fast_dev=False):
-    # 1. Charger et prétraiter les données
-    if fast_dev:
-        train_dataset, val_dataset, test_dataset, tokenizer = load_and_preprocess_data(max_train_samples=5000, max_val_samples=5000, max_test_samples=5000)
-    else:
-        train_dataset, val_dataset, test_dataset, tokenizer = load_and_preprocess_data()
+    wiki_dataset = WikipediaMLMDataset(language="en", version="20231101", num_examples=50)
+    train_dataset, val_dataset, test_dataset, tokenizer = preprocess_wikipedia_mlm(wiki_dataset)
 
     # 2. DataLoaders
     train_loader = DataLoader(train_dataset, batch_size=16, shuffle=True, collate_fn=collate_fn)
@@ -82,11 +117,11 @@ def pretrain_model(device, fast_dev=False):
     pretrainer = BERTTrainer(model, train_loader, val_loader, device=device)
 
     # 5. Entraînement
-    pretrainer.train(epochs=3, lr=2e-5, weight_decay=0.01)
+    pretrainer.pretrain(tokenizer, epochs=3, lr=2e-5, weight_decay=0.01)
 
     # 8. Test (évaluation sur les données de test)
     test_loader = DataLoader(test_dataset, batch_size=16, collate_fn=collate_fn)
-    predictions = pretrainer.predict(test_loader)
+    predictions = pretrainer.predict_pretrain(test_loader)
 
     # Exemple d'affichage pour les 5 premières prédictions
     print("\nExemples de prédictions :")
@@ -157,7 +192,11 @@ def main():
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     print(f"\033[93mUtilisation de l'appareil : {device}\033[0m")
     #TEMP :
-    train_dataset, val_dataset, test_dataset, tokenizer = load_and_preprocess_data(max_train_samples=5000, max_val_samples=5000, max_test_samples=5000)
+    tokenizer = load_tokenizer()
+    # Load dataset with subsampling
+    dataset = loading_dataset(max_train_samples=5000, max_val_samples=5000, max_test_samples=5000)
+    # Preprocess dataset
+    train_dataset, val_dataset, test_dataset, tokenizer = preprocess_dataset(dataset, tokenizer)
 
     # 2. DataLoaders
     train_loader = DataLoader(train_dataset, batch_size=16, shuffle=True, collate_fn=collate_fn)
@@ -175,8 +214,9 @@ def main():
 
     while True:
         print("1. Entraîner le modèle")
-        print("2. Evaluer un commentaire")
-        print("3. Quitter")
+        print("2. Pretrain le modèle")
+        print("3. Evaluer un commentaire")
+        print("4. Quitter")
         choice = input("Choisissez une option : ")
 
         if choice == '1':
@@ -189,6 +229,8 @@ def main():
                 print("Entraînement rapide...")
                 train_model(device, fast_dev=True)
         elif choice == '2':
+            pretrain_model(device, fast_dev=False)
+        elif choice == '3':
             print("Entrez les commentaires à évaluer (séparés par un point-virgule) :")
             comments_input = input("Commentaires : ")
             comments = comments_input.split(";")
