@@ -1,6 +1,6 @@
 import torch
-from models.BERT.BERTEmbedding import BERTEmbedding
-from models.BERT.AttentionLayer import EncoderLayer
+from models.bert.bert_embedding import BERTEmbedding
+from models.bert.attention_layer import EncoderLayer
 
 class BERT(torch.nn.Module):
     def __init__(self, vocab_size, d_model=768, n_layers=12, heads=12, dropout=0.1):
