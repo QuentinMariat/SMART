@@ -8,7 +8,18 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
-from config.settings import DATASET_NAME, EMOTION_LABELS, NUM_LABELS
+
+DATASET_NAME = "go_emotions"
+
+EMOTION_LABELS = [
+    'admiration', 'amusement', 'anger', 'annoyance', 'approval', 'caring',
+    'confusion', 'curiosity', 'desire', 'disappointment', 'disapproval',
+    'disgust', 'embarrassment', 'excitement', 'fear', 'gratitude',
+    'grief', 'joy', 'love', 'nervousness', 'optimism', 'pride',
+    'realization', 'relief', 'remorse', 'sadness', 'surprise', 'neutral'
+]
+
+NUM_LABELS = len(EMOTION_LABELS)
 
 # Chargement du dataset GoEmotions
 dataset = load_dataset(DATASET_NAME, split="train")
@@ -50,21 +61,22 @@ multi_label_rf.fit(X_train_tfidf, y_train)
 y_pred = multi_label_rf.predict(X_test_tfidf)
 
 # Rapport par étiquette
+print("Accuracy:", accuracy_score(y_test, y_pred))
 print(classification_report(y_test, y_pred, target_names=EMOTION_LABELS, zero_division=0))
 
-# Matrice de confusion multi-label
-mcm = multilabel_confusion_matrix(y_test, y_pred)
+# # Matrice de confusion multi-label
+# mcm = multilabel_confusion_matrix(y_test, y_pred)
 
-# Affichage de la matrice de confusion pour chaque label
-fig, axes = plt.subplots(7, 4, figsize=(15, 18))  # Organiser les 28 émotions en grille
-axes = axes.ravel()
+# # Affichage de la matrice de confusion pour chaque label
+# fig, axes = plt.subplots(7, 4, figsize=(15, 18))  # Organiser les 28 émotions en grille
+# axes = axes.ravel()
 
-for i in range(NUM_LABELS):
-    ax = axes[i]
-    sns.heatmap(mcm[i], annot=True, fmt="d", cmap="Blues", cbar=False, ax=ax)
-    ax.set_title(EMOTION_LABELS[i])
-    ax.set_xlabel('Prédictions')
-    ax.set_ylabel('Vérités terrain')
+# for i in range(NUM_LABELS):
+#     ax = axes[i]
+#     sns.heatmap(mcm[i], annot=True, fmt="d", cmap="Blues", cbar=False, ax=ax)
+#     ax.set_title(EMOTION_LABELS[i])
+#     ax.set_xlabel('Prédictions')
+#     ax.set_ylabel('Vérités terrain')
 
-plt.tight_layout()
-plt.show()
+# plt.tight_layout()
+# plt.show()

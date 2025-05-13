@@ -3,10 +3,22 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report, accuracy_score, confusion_matrix
+from sklearn.metrics import accuracy_score
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
-from config.settings import DATASET_NAME
+
+DATASET_NAME = "go_emotions"
+
+EMOTION_LABELS = [
+    'admiration', 'amusement', 'anger', 'annoyance', 'approval', 'caring',
+    'confusion', 'curiosity', 'desire', 'disappointment', 'disapproval',
+    'disgust', 'embarrassment', 'excitement', 'fear', 'gratitude',
+    'grief', 'joy', 'love', 'nervousness', 'optimism', 'pride',
+    'realization', 'relief', 'remorse', 'sadness', 'surprise', 'neutral'
+]
+
+NUM_LABELS = len(EMOTION_LABELS)
 
 
 # Charger le dataset GoEmotions
