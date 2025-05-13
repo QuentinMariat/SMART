@@ -84,16 +84,7 @@ coverage/
 .cache-loader/
 
 # api key
-src/scrapping/config.json
+src/WebApp/backend/scrapping/config.json
 
 #models
 *.pt
-
-# Modeles de machine learning
-*.pt
-
-
-# Modeles de machine learning
-*.pt
-
-

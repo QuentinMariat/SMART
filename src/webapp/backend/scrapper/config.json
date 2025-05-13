@@ -1,0 +1,9 @@
+{
+    "youtube": {
+        "apiKey": "YOUR_API_KEY"
+    },
+
+    "twitter": {
+        "bearerToken": "YOUR_API_KEY"
+    }
+}

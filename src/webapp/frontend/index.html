@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sentiment Analyzer</title>
+    
+    <!-- External dependencies -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Local CSS -->
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/animations.css">
+    
+    <!-- Local JS (deferred) -->
+    <script src="js/utils.js" defer></script>
+    <script src="js/navigation.js" defer></script>
+    <script src="js/analyzer.js" defer></script>
+    <script src="js/app.js" defer></script>
+</head>
+<style>
+    /* Technical diagram styles */
+.diagram-container {
+    position: relative;
+    width: 100%;
+    overflow: hidden;
+    margin: 2rem 0;
+}
+
+.transformer-diagram {
+    width: 100%;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.attention-head {
+    fill: #6366f1;
+    opacity: 0.8;
+}
+
+.attention-line {
+    stroke: #8b5cf6;
+    stroke-width: 2;
+    stroke-dasharray: 5,5;
+}
+
+.encoder-block {
+    fill: #ec4899;
+    opacity: 0.7;
+}
+
+.decoder-block {
+    fill: #14b8a6;
+    opacity: 0.7;
+}
+
+.embedding-layer {
+    fill: #f59e0b;
+    opacity: 0.7;
+}
+
+.positional-encoding {
+    fill: #10b981;
+    opacity: 0.7;
+}
+
+.tech-diagram {
+    background-color: white;
+    border-radius: 0.5rem;
+    padding: 1rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    margin: 1rem 0;
+}
+</style>
+<body class="bg-gray-50 font-sans">
+    <!-- Navigation -->
+    <nav class="bg-indigo-600 text-white shadow-lg">
+        <div class="max-w-6xl mx-auto px-4">
+            <div class="flex justify-between items-center py-4">
+                <div class="flex items-center space-x-4">
+                    <i class="fas fa-robot text-2xl"></i>
+                    <span class="font-bold text-xl">Sentiment Analyzer</span>
+                </div>
+                <div class="hidden md:flex items-center space-x-8">
+                    <button data-page="home" class="nav-link active">Home</button>
+                    <button data-page="analyzer" class="nav-link">Analyzer</button>
+                    <button data-page="technical" class="nav-link">Technical</button>
+                    <button data-page="about" class="nav-link">About</button>
+                </div>
+                <button class="md:hidden focus:outline-none" id="mobile-menu-button">
+                    <i class="fas fa-bars text-2xl"></i>
+                </button>
+            </div>
+        </div>
+        <!-- Mobile menu -->
+        <div class="md:hidden hidden bg-indigo-700" id="mobile-menu">
+            <div class="px-4 py-2 flex flex-col space-y-2">
+                <button data-page="home" class="nav-link-mobile active">Home</button>
+                <button data-page="analyzer" class="nav-link-mobile">Analyzer</button>
+                <button data-page="technical" class="nav-link-mobile">Technical</button>
+                <button data-page="about" class="nav-link-mobile">About</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="max-w-6xl mx-auto px-4 py-8">
+        <!-- Home Page -->
+        <div id="home-page" class="page-transition">
+            <!-- Home page content remains the same -->
+            <div class="bg-white rounded-xl shadow-md overflow-hidden p-6 mb-8">
+                <div class="md:flex">
+                    <div class="md:flex-shrink-0">
+                        <img class="h-48 w-full object-contain md:h-full md:w-48" src="https://cdn-icons-png.flaticon.com/512/1998/1998664.png" alt="Social Media Analysis">
+                    </div>
+                    <div class="p-8">
+                        <div class="uppercase tracking-wide text-sm text-indigo-600 font-semibold">Welcome to</div>
+                        <h1 class="mt-2 text-3xl font-extrabold text-gray-900">Sentiment Analyzer</h1>
+                        <p class="mt-3 text-gray-600">
+                            Our advanced AI-powered tool analyzes public sentiment from social media platforms. 
+                            Simply paste a YouTube video URL or Twitter/X post URL, and we'll analyze the comments
+                            to give you insights into public opinion and emotional reactions.
+                        </p>
+                        <div class="mt-6">
+                            <button onclick="showPage('analyzer')" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition duration-300 flex items-center">
+                                <i class="fas fa-play mr-2"></i> Try Analyzer
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid md:grid-cols-3 gap-6 mb-8">
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <div class="text-indigo-600 mb-4">
+                        <i class="fab fa-youtube text-3xl"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-2">YouTube Analysis</h3>
+                    <p class="text-gray-600">Understand viewer sentiment from video comments to gauge audience reactions.</p>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <div class="text-indigo-600 mb-4">
+                        <i class="fab fa-twitter text-3xl"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-2">Twitter/X Analysis</h3>
+                    <p class="text-gray-600">Analyze tweet replies to measure public opinion and engagement.</p>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <div class="text-indigo-600 mb-4">
+                        <i class="fas fa-chart-bar text-3xl"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-2">Detailed Reports</h3>
+                    <p class="text-gray-600">Get comprehensive sentiment breakdowns with visualizations.</p>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-md p-6">
+                <h2 class="text-2xl font-bold mb-4">How It Works</h2>
+                <div class="space-y-6">
+                    <div class="flex items-start">
+                        <div class="flex-shrink-0 bg-indigo-100 rounded-full p-2">
+                            <span class="text-indigo-600 font-bold">1</span>
+                        </div>
+                        <div class="ml-4">
+                            <h3 class="font-semibold">Paste a URL</h3>
+                            <p class="text-gray-600 mt-1">Copy and paste a YouTube video URL or Twitter/X post URL.</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start">
+                        <div class="flex-shrink-0 bg-indigo-100 rounded-full p-2">
+                            <span class="text-indigo-600 font-bold">2</span>
+                        </div>
+                        <div class="ml-4">
+                            <h3 class="font-semibold">AI Processing</h3>
+                            <p class="text-gray-600 mt-1">Our system collects and analyzes comments/replies using NLP.</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start">
+                        <div class="flex-shrink-0 bg-indigo-100 rounded-full p-2">
+                            <span class="text-indigo-600 font-bold">3</span>
+                        </div>
+                        <div class="ml-4">
+                            <h3 class="font-semibold">Get Insights</h3>
+                            <p class="text-gray-600 mt-1">Receive a detailed sentiment analysis report with trends.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Analyzer Page -->
+        <div id="analyzer-page" class="page-transition hidden">
+            <!-- Analyzer page content remains the same -->
+            <div class="bg-white rounded-xl shadow-md overflow-hidden mb-8">
+                <div class="p-4 border-b border-gray-200 bg-indigo-600 text-white">
+                    <h2 class="text-xl font-bold flex items-center">
+                        <i class="fas fa-chart-pie mr-2"></i> Sentiment Analysis
+                    </h2>
+                </div>
+                
+                <div class="p-6">
+                    <div class="flex space-x-2 mb-4">
+                        <button id="youtube-btn" class="platform-selector active px-4 py-2 rounded-lg flex items-center">
+                            <i class="fab fa-youtube mr-2"></i> YouTube
+                        </button>
+                        <button id="twitter-btn" class="platform-selector px-4 py-2 rounded-lg flex items-center">
+                            <i class="fab fa-twitter mr-2"></i> Twitter/X
+                        </button>
+                    </div>
+                    
+                    <div class="url-input-container mb-4">
+                        <i id="url-icon" class="fab fa-youtube platform-icon"></i>
+                        <input type="text" id="url-input" class="url-input w-full border border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Paste YouTube video URL here...">
+                    </div>
+                    
+                    <div class="flex justify-between">
+                        <button id="analyze-btn" class="bg-indigo-600 text-white rounded-lg px-6 py-3 hover:bg-indigo-700 transition duration-300 flex items-center">
+                            <i class="fas fa-chart-bar mr-2"></i> Analyze Sentiment
+                        </button>
+                        <button id="sample-btn" class="text-sm bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition duration-300 flex items-center">
+                            <i class="fas fa-lightbulb mr-2"></i> Sample URL
+                        </button>
+                    </div>
+                </div>
+                
+                <div id="results-container" class="hidden p-6 border-t border-gray-200">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-lg font-semibold">Sentiment Analysis Results</h3>
+                        <div class="flex items-center">
+                            <span class="text-sm text-gray-600 mr-2">Comments analyzed:</span>
+                            <span id="comment-count" class="font-bold">0</span>
+                        </div>
+                    </div>
+                    
+                    <div class="grid md:grid-cols-3 gap-4 mb-6">
+                        <div class="sentiment-summary bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="font-medium text-green-700">Positive</span>
+                                <span id="positive-percent" class="font-bold">0%</span>
+                            </div>
+                            <div class="sentiment-bar bg-gray-200">
+                                <div id="positive-bar" class="sentiment-bar bg-green-500" style="width: 0%"></div>
+                            </div>
+                        </div>
+                        <div class="sentiment-summary bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="font-medium text-gray-700">Neutral</span>
+                                <span id="neutral-percent" class="font-bold">0%</span>
+                            </div>
+                            <div class="sentiment-bar bg-gray-200">
+                                <div id="neutral-bar" class="sentiment-bar bg-blue-500" style="width: 0%"></div>
+                            </div>
+                        </div>
+                        <div class="sentiment-summary bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="font-medium text-red-700">Negative</span>
+                                <span id="negative-percent" class="font-bold">0%</span>
+                            </div>
+                            <div class="sentiment-bar bg-gray-200">
+                                <div id="negative-bar" class="sentiment-bar bg-red-500" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white rounded-lg shadow-sm p-4 mb-6">
+                        <h4 class="font-semibold mb-3">Sentiment Over Time</h4>
+                        <div id="sentiment-timeline" class="h-64 bg-gray-50 rounded flex items-center justify-center text-gray-400">
+                            <p>Sentiment timeline chart will appear here</p>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white rounded-lg shadow-sm p-4">
+                        <div class="flex justify-between items-center mb-3">
+                            <h4 class="font-semibold">Top Comments</h4>
+                            <div class="flex space-x-2">
+                                <button id="show-positive" class="text-xs bg-green-100 text-green-800 px-2 py-1 rounded hover:bg-green-200">Positive</button>
+                                <button id="show-negative" class="text-xs bg-red-100 text-red-800 px-2 py-1 rounded hover:bg-red-200">Negative</button>
+                                <button id="show-all" class="text-xs bg-gray-100 text-gray-800 px-2 py-1 rounded hover:bg-gray-200">All</button>
+                            </div>
+                        </div>
+                        
+                        <div id="comments-container" class="space-y-3 max-h-96 overflow-y-auto">
+                            <!-- Comments will be dynamically inserted here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-xl shadow-md p-6">
+                <h2 class="text-xl font-bold mb-4">Understanding Sentiment Analyzer</h2>
+                <div class="grid md:grid-cols-2 gap-4">
+                    <div class="p-4 rounded-lg sentiment-positive">
+                        <div class="font-bold text-green-700 mb-2">YouTube Analysis</div>
+                        <p class="text-gray-700">
+                            Analyze viewer comments to understand audience reception of your videos. 
+                            Track how sentiment changes over time and identify key moments that generated strong reactions.
+                        </p>
+                    </div>
+                    <div class="p-4 rounded-lg sentiment-neutral">
+                        <div class="font-bold text-blue-700 mb-2">Twitter/X Analysis</div>
+                        <p class="text-gray-700">
+                            Measure public opinion about tweets, announcements, or topics. 
+                            See how different demographics react and identify influential comments.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Technical Page -->
+        <div id="technical-page" class="page-transition hidden">
+            <!-- Technical page content remains the same -->
+            <div class="bg-white rounded-xl shadow-md p-6 mb-8">
+                <h1 class="text-3xl font-bold mb-6">How We Analyze Sentiment</h1>
+
+                <div class="prose max-w-none">
+                    <p class="mb-4">
+                        Our sentiment analyzer is powered by transformer-based models, the same architecture behind 
+                        state-of-the-art language models like BERT and GPT. These models excel at understanding 
+                        context and emotional tone in text.
+                    </p>
+                    
+                    <h2 class="text-2xl font-bold mt-8 mb-4">Transformer Architecture</h2>
+                    
+                    <div class="tech-diagram">
+                        <div class="diagram-container">
+                            <svg class="transformer-diagram" viewBox="0 0 800 400" xmlns="http://www.w3.org/2000/svg">
+                                <!-- Input Embeddings -->
+                                <rect x="50" y="50" width="100" height="50" rx="5" class="embedding-layer"/>
+                                <text x="100" y="80" text-anchor="middle" fill="white" font-weight="bold">Input</text>
+                                
+                                <!-- Positional Encoding -->
+                                <rect x="50" y="120" width="100" height="50" rx="5" class="positional-encoding"/>
+                                <text x="100" y="150" text-anchor="middle" fill="white" font-weight="bold">Position</text>
+                                
+                                <!-- Encoder Stack -->
+                                <rect x="200" y="50" width="100" height="120" rx="5" class="encoder-block"/>
+                                <text x="250" y="120" text-anchor="middle" fill="white" font-weight="bold">Encoder</text>
+                                
+                                <!-- Multi-Head Attention -->
+                                <rect x="350" y="80" width="100" height="40" rx="5" class="attention-head"/>
+                                <text x="400" y="105" text-anchor="middle" fill="white" font-size="12">Attention</text>
+                                
+                                <!-- Feed Forward -->
+                                <rect x="350" y="140" width="100" height="40" rx="5" class="encoder-block"/>
+                                <text x="400" y="165" text-anchor="middle" fill="white" font-size="12">Feed Forward</text>
+                                
+                                <!-- Output -->
+                                <rect x="500" y="50" width="100" height="50" rx="5" class="decoder-block"/>
+                                <text x="550" y="80" text-anchor="middle" fill="white" font-weight="bold">Context</text>
+                                
+                                <!-- Classification Head -->
+                                <rect x="500" y="120" width="100" height="50" rx="5" class="decoder-block"/>
+                                <text x="550" y="150" text-anchor="middle" fill="white" font-weight="bold">Sentiment</text>
+                                
+                                <!-- Arrows -->
+                                <line x1="150" y1="75" x2="200" y2="75" stroke="#4b5563" stroke-width="2"/>
+                                <line x1="150" y1="145" x2="200" y2="145" stroke="#4b5563" stroke-width="2"/>
+                                <line x1="300" y1="110" x2="350" y2="100" stroke="#4b5563" stroke-width="2"/>
+                                <line x1="300" y1="110" x2="350" y2="120" stroke="#4b5563" stroke-width="2"/>
+                                <line x1="450" y1="100" x2="500" y2="75" stroke="#4b5563" stroke-width="2"/>
+                                <line x1="450" y1="160" x2="500" y2="145" stroke="#4b5563" stroke-width="2"/>
+                            </svg>
+                        </div>
+                        
+                        <div class="grid md:grid-cols-3 gap-4 mt-6">
+                            <div class="p-3 bg-indigo-50 rounded-lg">
+                                <h3 class="font-semibold text-indigo-800">Input Embedding</h3>
+                                <p class="text-sm text-gray-700">Words are converted to numerical vectors that capture semantic meaning.</p>
+                            </div>
+                            <div class="p-3 bg-green-50 rounded-lg">
+                                <h3 class="font-semibold text-green-800">Positional Encoding</h3>
+                                <p class="text-sm text-gray-700">Information about word order is added to understand sequence.</p>
+                            </div>
+                            <div class="p-3 bg-purple-50 rounded-lg">
+                                <h3 class="font-semibold text-purple-800">Attention Mechanism</h3>
+                                <p class="text-sm text-gray-700">Model learns which words to focus on for sentiment analysis.</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <h2 class="text-2xl font-bold mt-8 mb-4">Self-Attention Mechanism</h2>
+                    
+                    <div class="tech-diagram">
+                        <div class="diagram-container">
+                            <svg class="transformer-diagram" viewBox="0 0 800 300" xmlns="http://www.w3.org/2000/svg">
+                                <!-- Sentence -->
+                                <text x="400" y="50" text-anchor="middle" font-size="16" font-weight="bold">"The movie was great but the acting was terrible"</text>
+                                
+                                <!-- Words -->
+                                <circle cx="200" cy="120" r="30" fill="#6366f1" opacity="0.7"/>
+                                <text x="200" y="125" text-anchor="middle" fill="white" font-weight="bold">great</text>
+                                
+                                <circle cx="400" cy="120" r="30" fill="#6366f1" opacity="0.7"/>
+                                <text x="400" y="125" text-anchor="middle" fill="white" font-weight="bold">but</text>
+                                
+                                <circle cx="600" cy="120" r="30" fill="#6366f1" opacity="0.7"/>
+                                <text x="600" y="125" text-anchor="middle" fill="white" font-weight="bold">terrible</text>
+                                
+                                <!-- Attention lines -->
+                                <line x1="200" y1="150" x2="400" y2="180" class="attention-line"/>
+                                <line x1="200" y1="150" x2="600" y2="180" class="attention-line" stroke-dasharray="10,5"/>
+                                <line x1="400" y1="150" x2="600" y2="180" class="attention-line"/>
+                                
+                                <!-- Legend -->
+                                <line x1="100" y1="220" x2="150" y2="220" class="attention-line"/>
+                                <text x="170" y="225" text-anchor="start">Strong attention</text>
+                                
+                                <line x1="100" y1="250" x2="150" y2="250" class="attention-line" stroke-dasharray="10,5"/>
+                                <text x="170" y="255" text-anchor="start">Weak attention</text>
+                            </svg>
+                        </div>
+                        
+                        <p class="mt-4 text-gray-700">
+                            The self-attention mechanism allows each word to interact with every other word in the sentence, 
+                            determining how much focus to place on different parts when analyzing sentiment. In this example, 
+                            "great" and "terrible" would receive strong attention weights as they carry the most emotional content.
+                        </p>
+                    </div>
+                    
+                    <h2 class="text-2xl font-bold mt-8 mb-4">Sentiment Classification Process</h2>
+                    
+                    <div class="tech-diagram">
+                        <div class="grid md:grid-cols-3 gap-4">
+                            <div class="p-4 bg-blue-50 rounded-lg">
+                                <div class="text-blue-600 mb-2">
+                                    <i class="fas fa-layer-group text-2xl"></i>
+                                </div>
+                                <h3 class="font-semibold">1. Contextual Embedding</h3>
+                                <p class="text-sm text-gray-700">Transformer creates rich representations that understand word meaning in context.</p>
+                            </div>
+                            <div class="p-4 bg-purple-50 rounded-lg">
+                                <div class="text-purple-600 mb-2">
+                                    <i class="fas fa-brain text-2xl"></i>
+                                </div>
+                                <h3 class="font-semibold">2. Attention Weights</h3>
+                                <p class="text-sm text-gray-700">Model identifies which words are most relevant for sentiment analysis.</p>
+                            </div>
+                            <div class="p-4 bg-green-50 rounded-lg">
+                                <div class="text-green-600 mb-2">
+                                    <i class="fas fa-chart-bar text-2xl"></i>
+                                </div>
+                                <h3 class="font-semibold">3. Classification Head</h3>
+                                <p class="text-sm text-gray-700">Final layers map the contextual understanding to sentiment probabilities.</p>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-6 p-4 bg-gray-50 rounded-lg">
+                            <h3 class="font-semibold mb-2">Example Analysis</h3>
+                            <div class="flex items-center space-x-4">
+                                <div class="flex-shrink-0">
+                                    <i class="fas fa-quote-left text-gray-400 text-2xl"></i>
+                                </div>
+                                <div>
+                                    <p class="italic text-gray-700">"The service was slow but the food was amazing"</p>
+                                    <div class="mt-2 flex space-x-4">
+                                        <div>
+                                            <span class="text-sm font-medium">Negative:</span>
+                                            <div class="w-full bg-gray-200 rounded-full h-2.5">
+                                                <div class="bg-red-500 h-2.5 rounded-full" style="width: 30%"></div>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <span class="text-sm font-medium">Neutral:</span>
+                                            <div class="w-full bg-gray-200 rounded-full h-2.5">
+                                                <div class="bg-blue-500 h-2.5 rounded-full" style="width: 10%"></div>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <span class="text-sm font-medium">Positive:</span>
+                                            <div class="w-full bg-gray-200 rounded-full h-2.5">
+                                                <div class="bg-green-500 h-2.5 rounded-full" style="width: 60%"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <h2 class="text-2xl font-bold mt-8 mb-4">Model Training Process</h2>
+                    
+                    <div class="tech-diagram">
+                        <div class="flex items-start space-x-4">
+                            <div class="flex-shrink-0">
+                                <div class="bg-indigo-100 rounded-full p-3">
+                                    <i class="fas fa-database text-indigo-600"></i>
+                                </div>
+                            </div>
+                            <div>
+                                <h3 class="font-semibold">1. Data Collection</h3>
+                                <p class="text-gray-700">Millions of text samples with sentiment labels are gathered from various sources.</p>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-start space-x-4 mt-4">
+                            <div class="flex-shrink-0">
+                                <div class="bg-purple-100 rounded-full p-3">
+                                    <i class="fas fa-cogs text-purple-600"></i>
+                                </div>
+                            </div>
+                            <div>
+                                <h3 class="font-semibold">2. Pre-training</h3>
+                                <p class="text-gray-700">Model learns general language understanding through masked language modeling.</p>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-start space-x-4 mt-4">
+                            <div class="flex-shrink-0">
+                                <div class="bg-green-100 rounded-full p-3">
+                                    <i class="fas fa-tasks text-green-600"></i>
+                                </div>
+                            </div>
+                            <div>
+                                <h3 class="font-semibold">3. Fine-tuning</h3>
+                                <p class="text-gray-700">Model is specifically trained on sentiment analysis tasks with labeled data.</p>
+                            </div>
+                
+                <div class="prose max-w-none">
+                    <p class="mb-4">
+                        Our sentiment analyzer uses advanced natural language processing techniques to extract and evaluate
+                        emotional tone from social media comments. Here's a technical overview of our approach:
+                    </p>
+                    
+                    <h2 class="text-2xl font-bold mt-8 mb-4">Data Collection Pipeline</h2>
+                    
+                    <div class="bg-gray-50 p-4 rounded-lg mb-6">
+                        <div class="flex items-start space-x-4">
+                            <div class="flex-shrink-0 bg-indigo-100 rounded-full p-3">
+                                <i class="fas fa-cloud-download-alt text-indigo-600"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-semibold">1. URL Parsing</h3>
+                                <p class="text-gray-700">
+                                    We extract video IDs from YouTube URLs and tweet IDs from Twitter URLs to identify the exact content.
+                                </p>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-start space-x-4 mt-4">
+                            <div class="flex-shrink-0 bg-purple-100 rounded-full p-3">
+                                <i class="fas fa-comments text-purple-600"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-semibold">2. Comment Extraction</h3>
+                                <p class="text-gray-700">
+                                    Using platform APIs, we collect all available comments/replies while respecting rate limits and privacy.
+                                </p>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-start space-x-4 mt-4">
+                            <div class="flex-shrink-0 bg-green-100 rounded-full p-3">
+                                <i class="fas fa-filter text-green-600"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-semibold">3. Data Cleaning</h3>
+                                <p class="text-gray-700">
+                                    Comments are processed to remove spam, duplicates, and non-text content for accurate analysis.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <h2 class="text-2xl font-bold mt-8 mb-4">Sentiment Analysis Architecture</h2>
+                    
+                    <div class="bg-gray-50 p-4 rounded-lg mb-6">
+                        <div class="grid md:grid-cols-3 gap-4">
+                            <div class="p-3 bg-blue-50 rounded-lg">
+                                <h3 class="font-semibold text-blue-800">Transformer Models</h3>
+                                <p class="text-sm text-gray-700">
+                                    We use fine-tuned BERT and RoBERTa models specifically trained on social media language patterns.
+                                </p>
+                            </div>
+                            <div class="p-3 bg-green-50 rounded-lg">
+                                <h3 class="font-semibold text-green-800">Emotion Detection</h3>
+                                <p class="text-sm text-gray-700">
+                                    Beyond simple positive/negative, we detect specific emotions like joy, anger, surprise.
+                                </p>
+                            </div>
+                            <div class="p-3 bg-purple-50 rounded-lg">
+                                <h3 class="font-semibold text-purple-800">Context Awareness</h3>
+                                <p class="text-sm text-gray-700">
+                                    Our models understand sarcasm, emojis, and platform-specific slang for accurate analysis.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <h2 class="text-2xl font-bold mt-8 mb-4">Visualization & Reporting</h2>
+                    
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <div class="grid md:grid-cols-2 gap-4">
+                            <div>
+                                <h3 class="font-semibold mb-2">Sentiment Trends</h3>
+                                <p class="text-gray-700">
+                                    We track how sentiment evolves over time, correlating with video timestamps or tweet reply times.
+                                </p>
+                            </div>
+                            <div>
+                                <h3 class="font-semibold mb-2">Key Phrases</h3>
+                                <p class="text-gray-700">
+                                    Our reports highlight frequently mentioned terms and their associated sentiment scores.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- About Page -->
+        <div id="about-page" class="page-transition hidden">
+            <!-- About page content remains the same -->
+            <div class="bg-white rounded-xl shadow-md p-6 mb-8">
+                <h1 class="text-3xl font-bold mb-6">About Sentiment Analyzer</h1>
+                <div class="prose max-w-none">
+                    <p class="mb-4">
+                        Sentiment Analyzer was created to help businesses, creators, and researchers understand public opinion
+                        through social media interactions. Our tool provides actionable insights from YouTube and Twitter/X data.
+                    </p>
+                    <p class="mb-4">
+                        In today's digital landscape, understanding audience sentiment is crucial for content strategy, brand management,
+                        and market research. Our platform makes this analysis accessible to everyone.
+                    </p>
+                    
+                    <h2 class="text-2xl font-bold mt-8 mb-4">Our Mission</h2>
+                    <p class="mb-4">
+                        We believe in democratizing access to advanced sentiment analysis tools that were previously only available
+                        to large corporations with dedicated data science teams.
+                    </p>
+                    
+                    <div class="bg-indigo-50 p-4 rounded-lg mt-6">
+                        <h3 class="text-xl font-semibold mb-2 text-indigo-800">Key Features:</h3>
+                        <ul class="list-disc pl-5 space-y-2">
+                            <li>Real-time sentiment analysis from social URLs</li>
+                            <li>No technical expertise required</li>
+                            <li>Comprehensive visual reports</li>
+                            <li>Respect for user privacy and data ethics</li>
+                            <li>Continuous model improvements</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-white py-8">
+        <!-- Footer content remains the same -->
+            <div class="max-w-6xl mx-auto px-4">
+                <div class="grid md:grid-cols-3 gap-8">
+                    <div>
+                        <h3 class="text-lg font-semibold mb-4">Sentiment Analyzer</h3>
+                        <p class="text-gray-400">Advanced sentiment analysis for social media content.</p>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-semibold mb-4">Quick Links</h3>
+                        <ul class="space-y-2">
+                            <li><button onclick="showPage('home')" class="text-gray-400 hover:text-white transition duration-300">Home</button></li>
+                            <li><button onclick="showPage('analyzer')" class="text-gray-400 hover:text-white transition duration-300">Analyzer</button></li>
+                            <li><button onclick="showPage('technical')" class="text-gray-400 hover:text-white transition duration-300">Technical</button></li>
+                            <li><button onclick="showPage('about')" class="text-gray-400 hover:text-white transition duration-300">About</button></li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-semibold mb-4">Subscribe</h3>
+                        <p class="text-gray-400 mb-2">Get updates on new features and improvements.</p>
+                        <div class="flex">
+                            <input type="email" placeholder="Your email" class="px-3 py-2 bg-gray-700 text-white rounded-l focus:outline-none w-full">
+                            <button class="bg-indigo-600 px-4 py-2 rounded-r hover:bg-indigo-700 transition duration-300">
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="border-t border-gray-700 mt-8 pt-6 text-center text-gray-400">
+                    <p>&copy; 2023 Sentiment Analyzer Analyzer. All rights reserved.</p>
+                </div>
+            </div>
+    </footer>
+</body>
+</html>

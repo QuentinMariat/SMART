@@ -50,3 +50,34 @@ python3 src/youtube_scrapper.py "https://www.youtube.com/watch?v=LIEN_VIDEO" "AP
 ```bash
 PYTHONPATH=. python3 src/predict.py src/scrapping/output/youtube_comments_LIEN_VIDEO.csv
 ```
+
+## Application web
+
+L'application propose une interface web permettant de charger un lien YouTube et d'afficher les résultats de l'analyse de sentiments dans les commentaires, puis de l'afficher.
+
+### 🚀 Lancer l'application
+
+Dans un premier temps, il faut remplacer les clefs d'API dans le fichier : src\WebApp\backend\scrapping\config.json
+
+Il faut ensuite se placer à l'emplacement des fichiers du backend
+```bash
+cd cd src/WebApp/backend
+```
+Il faut exectuter la commande suivante :
+```bash
+uvicorn main:app --reload
+```
+
+Les différentes endpointes sont les suivants :
+| Méthode | Endpoint           | Description                                      |
+| ------- | ----------         | ------------------------------------------------ |
+| `POST`  | `/analyze/twitter` | Analyse des réponses d'un tweet                  |
+| `POST`  | `/analyze/youtube` | Analyse des commentaires d'une vidéo Youtube     |
+| `GET`   | `/docs`            | Documentation interactive de l'API (Swagger UI)  |
+
+
+Par défaut, la base de l'url est localhost:8000. Si le backend est executé ailleurs qu'en locale, il faut remplacer localhost:8000 par l'adresse du serveur.
+
+Il suffit ensuite d'executer le fichier src\WebApp\frontend\index.html pour acceder à la page web.
+
+
