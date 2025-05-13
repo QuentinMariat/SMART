@@ -1,12 +1,12 @@
-__pycache__/
+**/__pycache__/
 *.pyc
 .ipynb_checkpoints/
-results/
+results/checkpoint-*/
 logs/
 eval_results/
-models/__pycache__/
 data/processed/
 data/raw/
+output/
 
 # Node modules
 node_modules/
@@ -82,6 +82,15 @@ coverage/
 # Fichiers temporaires du navigateur
 .cache/
 .cache-loader/
+
+# api key
+src/scrapping/config.json
+
+#models
+*.pt
+
+# Modeles de machine learning
+*.pt
 
 
 # Modeles de machine learning

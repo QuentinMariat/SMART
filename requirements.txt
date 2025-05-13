@@ -1,3 +1,13 @@
+pandas 
+datasets
+nltk
+spacy
+matplotlib
+seaborn
+tqdm
+accelerate
+pathlib
+loguru
 huggingface-hub==0.30.2
 numpy==2.2.5
 scikit-learn==1.6.1
