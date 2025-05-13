@@ -56,7 +56,10 @@ PYTHONPATH=. python3 src/predict.py src/scrapping/output/youtube_comments_LIEN_V
 L'application propose une interface web permettant de charger un lien YouTube et d'afficher les résultats de l'analyse de sentiments dans les commentaires, puis de l'afficher.
 
 ### 🚀 Lancer l'application
-Il faut d'abord se placer à l'emplacement des fichiers du backend
+
+Dans un premier temps, il faut ajouter le fichier avec les clefs d'API à l'adresse suivante : src\WebApp\backend\scrapping\config.json
+
+Il faut ensuite se placer à l'emplacement des fichiers du backend
 ```bash
 cd cd src/WebApp/backend
 ```
@@ -74,5 +77,7 @@ Les différentes endpointes sont les suivants :
 
 
 Par défaut, la base de l'url est localhost:8000. Si le backend est executé ailleurs qu'en locale, il faut remplacer localhost:8000 par l'adresse du serveur.
+
+Il suffit ensuite d'executer le fichier src\WebApp\frontend\index.html pour acceder à la page web.
 
 
