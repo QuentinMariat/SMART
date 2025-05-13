@@ -24,7 +24,7 @@ class BERTTrainer:
         optimizer,
         num_warmup_steps=int(0.1 * total_steps),
         num_training_steps=total_steps
-)
+        )
 
         for epoch in range(epochs):
           print(f'Epoch {epoch + 1}/{epochs}')

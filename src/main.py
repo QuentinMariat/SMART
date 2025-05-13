@@ -50,7 +50,7 @@ def train_model(device, fast_dev=False):
     trainer = BERTTrainer(model, train_loader, val_loader, num_labels, device=device)
 
     # 5. Entraînement
-    trainer.train(epochs=3, lr=2e-5, weight_decay=0.01)
+    trainer.train(epochs=6, lr=5e-5, weight_decay=0.01)
 
     # 8. Test (évaluation sur les données de test)
     test_loader = DataLoader(test_dataset, batch_size=16, collate_fn=collate_fn)
