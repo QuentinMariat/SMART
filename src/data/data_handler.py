@@ -101,7 +101,23 @@ def preprocess_dataset(ds, tokenizer):
     print("Data preprocessing complete.")
     return train_tok, val_tok, test_tok, tokenizer
 
-def preprocess_wikipedia_mlm(wiki_dataset, model_name="bert-base-uncased", max_length=512, train_ratio=0.8, val_ratio=0.1):
+def cache_dataset(self):
+    """Cache the dataset to disk for faster future use."""
+    # Sauvegarder le dataset prétraité dans un répertoire de cache
+    print(f"Caching dataset to {self.cache_dir}...")
+    self.limited_dataset.save_to_disk(self.cache_dir)
+    
+def load_from_cache(self):
+    """Load the cached dataset if it exists."""
+    try:
+        print("Loading dataset from cache...")
+        cached_dataset = Dataset.load_from_disk(self.cache_dir)
+        return cached_dataset
+    except Exception as e:
+        print(f"Cache not found or error occurred: {e}")
+        return None
+
+def preprocess_wikipedia_mlm(wiki_dataset, model_name="bert-base-uncased", max_length=128, train_ratio=0.8, val_ratio=0.1, load_from_cache=False, cache_dir=None):
     """
     Preprocess Wikipedia dataset for BERT MLM pretraining (without masking).
     
@@ -111,6 +127,8 @@ def preprocess_wikipedia_mlm(wiki_dataset, model_name="bert-base-uncased", max_l
         max_length (int): Maximum sequence length (default: 512).
         train_ratio (float): Proportion of data for training (default: 0.8).
         val_ratio (float): Proportion of data for validation (default: 0.1).
+        cache_dir (str): Directory to save the cached dataset (default: None).
+        load_from_cache (bool): Whether to load from cache (default: False).
     
     Returns:
         tuple: (train_dataset, val_dataset, test_dataset, tokenizer)
@@ -118,54 +136,49 @@ def preprocess_wikipedia_mlm(wiki_dataset, model_name="bert-base-uncased", max_l
     # Load tokenizer
     print(f"Loading tokenizer: {model_name}")
     tokenizer = AutoTokenizer.from_pretrained(model_name)
-    
-    # Collect and tokenize texts
-    print("Tokenizing Wikipedia texts...")
-    input_ids_list = []
-    attention_mask_list = []
-    
-    for text in wiki_dataset:
-        # Tokenize text
-        encodings = tokenizer(
-            text,
-            truncation=True,
-            padding="max_length",
-            max_length=max_length,
-            return_tensors="pt",
-            add_special_tokens=True
+
+
+    # 1. Charger le dataset si dispo 
+    if load_from_cache and cache_dir:
+        print(f"Loading dataset from cache at {cache_dir}...")
+        tokenized_dataset = Dataset.load_from_disk(cache_dir)
+
+    else:
+        print("Preprocessing Wikipedia dataset...")
+        texts = list(wiki_dataset)  # Si ce sont des str
+        dataset = Dataset.from_dict({"text": texts})
+
+        def tokenize_batch(batch):
+            return tokenizer(
+                batch["text"],
+                truncation=True,
+                padding="max_length",
+                max_length=max_length
         )
         
-        input_ids = encodings["input_ids"].squeeze(0)  # Remove batch dimension
-        attention_mask = encodings["attention_mask"].squeeze(0)
-        
-        input_ids_list.append(input_ids)
-        attention_mask_list.append(attention_mask)
-    
-    # Convert to tensors
-    input_ids = torch.stack(input_ids_list)
-    attention_mask = torch.stack(attention_mask_list)
-    
-    # Create dataset
-    dataset = Dataset.from_dict({
-        "input_ids": input_ids,
-        "attention_mask": attention_mask
-    })
+        tokenized_dataset = dataset.map(tokenize_batch, batched=True)
+
+        # 4. Mettre au format PyTorch directement
+        tokenized_dataset.set_format(type="torch", columns=["input_ids", "attention_mask"])
+
+        # Gérer la sauvegarde du dataset
+        if not(load_from_cache) and cache_dir:
+            print(f"Saving dataset to cache at {cache_dir}...")
+            tokenized_dataset.save_to_disk(cache_dir)
+
+
     
     # Split dataset
     print("Splitting dataset...")
-    num_examples = len(dataset)
+    # Split dataset
+    num_examples = len(tokenized_dataset)
     train_size = int(train_ratio * num_examples)
     val_size = int(val_ratio * num_examples)
-    test_size = num_examples - train_size - val_size
-    
-    train_dataset = dataset.select(range(train_size))
-    val_dataset = dataset.select(range(train_size, train_size + val_size))
-    test_dataset = dataset.select(range(train_size + val_size, num_examples))
-    
-    # Set PyTorch format
-    train_dataset.set_format("torch", columns=["input_ids", "attention_mask"])
-    val_dataset.set_format("torch", columns=["input_ids", "attention_mask"])
-    test_dataset.set_format("torch", columns=["input_ids", "attention_mask"])
+
+    train_dataset = tokenized_dataset.select(range(train_size))
+    val_dataset = tokenized_dataset.select(range(train_size, train_size + val_size))
+    test_dataset = tokenized_dataset.select(range(train_size + val_size, num_examples))
+
     
     print(f"Preprocessing complete. Train: {len(train_dataset)}, Val: {len(val_dataset)}, Test: {len(test_dataset)}")
     return train_dataset, val_dataset, test_dataset, tokenizer

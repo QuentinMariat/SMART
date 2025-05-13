@@ -26,18 +26,21 @@ class BERT(torch.nn.Module):
             for _ in range(n_layers)
         ])
 
-    def forward(self, x):
-        # attention mask for padded tokens
-        # mask shape: (batch_size, 1, seq_len, seq_len)
-        #mask = (x > 0).unsqueeze(1).repeat(1, x.size(1), 1).unsqueeze(1)
-        mask = (x > 0).unsqueeze(1).unsqueeze(2)
+    def forward(self, input_ids, token_type_ids=None):
+        """
+        :param input_ids: Tensor (batch_size, seq_len)
+        :param token_type_ids: Optional Tensor (batch_size, seq_len)
+        """
+        # Mask for padding tokens (1 where token exists, 0 for padding)
+        mask = (input_ids > 0).unsqueeze(1).unsqueeze(2)
 
-        # embedding lookup + add segment embeddings if provided
-        x = self.embedding(x)
+        # Embedding (supports optional segment embeddings)
+        x = self.embedding(input_ids, token_type_ids)
 
-        # pass through each Transformer layer
+        # Encoder layers
         for encoder in self.encoder_blocks:
             x = encoder(x, mask)
+
         return x
 
 
@@ -110,6 +113,7 @@ class BERTForMLMPretraining(torch.nn.Module):
         self.bert = BERT(vocab_size, d_model, n_layers, heads, dropout)
         # Tête MLM
         self.mlm_head = BERTMLMHead(d_model, vocab_size)
+        self.vocab_size = vocab_size
 
     def forward(self, input_ids, token_type_ids=None):
         # Encodage

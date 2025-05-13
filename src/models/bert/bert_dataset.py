@@ -1,4 +1,4 @@
-from datasets import load_dataset
+from datasets import load_dataset, Dataset
 
 class WikipediaMLMDataset:
     """A class to load and iterate over Wikipedia dataset for MLM pretraining."""
@@ -23,12 +23,25 @@ class WikipediaMLMDataset:
             "wikimedia/wikipedia",
             f"{version}.{language}",
             split=split,
-            streaming=True,
+            streaming=False,
             trust_remote_code=True
         )
         
-        # Limit to specified number of examples
-        self.limited_dataset = self.dataset.take(num_examples)
+        print(f"Loading dataset from version {version}...")
+        self.dataset = load_dataset(
+            "wikimedia/wikipedia",
+            f"{version}.{language}",
+            split=split,
+            streaming=False  # Nous n'utilisons pas le streaming ici
+        )
+        
+        # Limiter le nombre d'exemples téléchargés
+        self.limited_dataset = self.dataset.select(range(min(self.num_examples, len(self.dataset))))
+        print(f"Loaded {len(self.limited_dataset)} examples from {split} split.")
+        
+
+
+    
     
     def get_iterator(self):
         """

@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from sklearn.metrics import f1_score, accuracy_score
+from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
 from tqdm import tqdm
 from transformers import get_linear_schedule_with_warmup
 
@@ -114,6 +114,9 @@ class BERTTrainer:
         val_loss = 0.0
         criterion = nn.CrossEntropyLoss(ignore_index=-100)
 
+        all_preds = []
+        all_labels = []
+
         with torch.no_grad():
             for batch in tqdm(self.val_loader, desc="Evaluating MLM", leave=False):
                 input_ids = batch["input_ids"].to(self.device)
@@ -130,8 +133,26 @@ class BERTTrainer:
                 )
                 val_loss += loss.item()
 
+                # Compute predictions
+                preds = torch.argmax(logits_mlm, dim=-1)
+
+                # Flatten and filter out positions with label -100
+                active_labels = mlm_labels.view(-1) != -100
+                filtered_preds = preds.view(-1)[active_labels]
+                filtered_labels = mlm_labels.view(-1)[active_labels]
+
+                all_preds.extend(filtered_preds.cpu().tolist())
+                all_labels.extend(filtered_labels.cpu().tolist())
+
         avg_val_loss = val_loss / len(self.val_loader)
+        acc = accuracy_score(all_labels, all_preds)
+        f1 = f1_score(all_labels, all_preds, average="macro")
+        precision = precision_score(all_labels, all_preds, average="macro")
+        recall = recall_score(all_labels, all_preds, average="macro")
+
         print(f"🔎 Val MLM Loss: {avg_val_loss:.4f}")
+        print(f"📊 Accuracy: {acc:.4f} | Precision: {precision:.4f} | Recall: {recall:.4f} | F1: {f1:.4f}")
+
 
 
     def evaluate_pretrain_on_test(self, test_loader, tokenizer):
@@ -139,8 +160,11 @@ class BERTTrainer:
         test_loss = 0.0
         criterion = nn.CrossEntropyLoss(ignore_index=-100)
 
+        all_preds = []
+        all_labels = []
+
         with torch.no_grad():
-            for batch in tqdm(test_loader, desc="Testing MLM", leave=False):
+            for batch in tqdm(self.val_loader, desc="Testing MLM", leave=False):
                 input_ids = batch["input_ids"].to(self.device)
                 token_type_ids = batch.get("token_type_ids")
 
@@ -155,8 +179,38 @@ class BERTTrainer:
                 )
                 test_loss += loss.item()
 
-        avg_test_loss = test_loss / len(test_loader)
+                # Compute predictions
+                preds = torch.argmax(logits_mlm, dim=-1)
+
+                # Flatten and filter out positions with label -100
+                active_labels = mlm_labels.view(-1) != -100
+                filtered_preds = preds.view(-1)[active_labels]
+                filtered_labels = mlm_labels.view(-1)[active_labels]
+
+                all_preds.extend(filtered_preds.cpu().tolist())
+                all_labels.extend(filtered_labels.cpu().tolist())
+
+        avg_test_loss = test_loss / len(self.val_loader)
+        acc = accuracy_score(all_labels, all_preds)
+        f1 = f1_score(all_labels, all_preds, average="macro", zero_division=0)
+        precision = precision_score(all_labels, all_preds, average="macro", zero_division=0)
+        recall = recall_score(all_labels, all_preds, average="macro", zero_division=0)
+
+
+        print("\n📝 Exemples de reconstruction MLM :")
+        for i in range(min(5, input_ids.size(0))):
+            original_tokens = tokenizer.convert_ids_to_tokens(input_ids[i].tolist())
+            masked_tokens = tokenizer.convert_ids_to_tokens(inputs_masked[i].tolist())
+            predicted_tokens = tokenizer.convert_ids_to_tokens(torch.argmax(logits_mlm[i], dim=-1).tolist())
+
+            print(f"\n🔹 Sample {i+1}:")
+            print("Original : ", " ".join(original_tokens))
+            print("Masqué   : ", " ".join(masked_tokens))
+            print("Prédit   : ", " ".join(predicted_tokens))
+
+
         print(f"🧪 Test MLM Loss: {avg_test_loss:.4f}")
+        print(f"📊 Accuracy: {acc:.4f} | Precision: {precision:.4f} | Recall: {recall:.4f} | F1: {f1:.4f}")
 
     def predict_pretrain(self, test_loader, tokenizer):
         self.model.eval()

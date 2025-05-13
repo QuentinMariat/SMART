@@ -86,3 +86,6 @@ src/WebApp/backend/scrapping/config.json
 
 #models
 *.pt
+
+# cache dataset
+cache/

@@ -102,8 +102,8 @@ def train_model(device, fast_dev=False):
     trainer.evaluate_on_test(test_loader)
 
 def pretrain_model(device, fast_dev=False):
-    wiki_dataset = WikipediaMLMDataset(language="en", version="20231101", num_examples=50)
-    train_dataset, val_dataset, test_dataset, tokenizer = preprocess_wikipedia_mlm(wiki_dataset)
+    wiki_dataset = WikipediaMLMDataset(language="en", version="20231101", num_examples=100000)
+    train_dataset, val_dataset, test_dataset, tokenizer = preprocess_wikipedia_mlm(wiki_dataset, load_from_cache=False, cache_dir="./cache")
 
     # 2. DataLoaders
     train_loader = DataLoader(train_dataset, batch_size=16, shuffle=True, collate_fn=collate_fn)
@@ -121,14 +121,8 @@ def pretrain_model(device, fast_dev=False):
 
     # 8. Test (évaluation sur les données de test)
     test_loader = DataLoader(test_dataset, batch_size=16, collate_fn=collate_fn)
-    predictions = pretrainer.predict_pretrain(test_loader)
 
-    # Exemple d'affichage pour les 5 premières prédictions
-    print("\nExemples de prédictions :")
-    for i, pred in enumerate(predictions[:5]):
-        print(f"Sample {i}: Predicted labels = {pred}")
-
-    pretrainer.evaluate_on_test(test_loader)
+    pretrainer.evaluate_pretrain_on_test(test_loader, tokenizer)
 
 def predict_single_comment(comment, model, tokenizer, device, threshold=0.5):
     model.eval()
@@ -270,7 +264,7 @@ def main():
                 print(f"Labels binaires prédits : {pred_labels}")
                 print(f"Émotions détectées : {predicted_emotions}\n")
 
-        elif choice == '3':
+        elif choice == '4':
             print("Au revoir !")
             break
         else:
