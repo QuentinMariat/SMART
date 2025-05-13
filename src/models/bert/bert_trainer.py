@@ -14,7 +14,7 @@ class BERTTrainer:
         self.val_loader = val_loader
         self.num_labels = num_labels
         self.device = device
-        self.criterion = nn.BCELoss()  # car le modèle renvoie des probas (sigmoid)
+        self.criterion = nn.BCEWithLogitsLoss()
         self.thresholds = torch.tensor(list(EMOTION_THRESHOLDS.values()), device=self.device)
 
     def train(self, epochs=3, lr=2e-5, weight_decay=0.01, file_name='bert_multilabel.pt'):
