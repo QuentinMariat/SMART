@@ -8,7 +8,7 @@ import torch
 from datasets import Dataset
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, Trainer, TrainingArguments, DataCollatorWithPadding
 from src.data.data_handler import load_and_preprocess_data
-from src.evaluation.metrics import compute_metrics
+from sklearn.metrics import accuracy_score, precision_recall_fscore_support
 
 try:
     from src.config.settings import (
@@ -22,8 +22,31 @@ except ImportError as e:
     print(f"Erreur: Impossible d'importer une ou plusieurs variables depuis src.config.settings. Détails: {e}")
     sys.exit(1)
 
-OUTPUT_DIR = "./eval_results"
+OUTPUT_DIR = "./mvp_eval_results"
 
+def compute_metrics(eval_pred):
+    """
+    Calcule les métriques d'évaluation incluant l'accuracy, la précision, le rappel et le F1-score.
+    """
+    predictions, labels = eval_pred
+    predictions = (predictions > PREDICTION_PROB_THRESHOLD).astype(int)
+    
+    # Calcul de l'accuracy globale
+    accuracy = accuracy_score(labels.flatten(), predictions.flatten())
+    
+    # Calcul des métriques par classe
+    precision, recall, f1, _ = precision_recall_fscore_support(
+        labels.flatten(), 
+        predictions.flatten(), 
+        average='weighted'
+    )
+    
+    return {
+        'accuracy': accuracy,
+        'precision': precision,
+        'recall': recall,
+        'f1': f1
+    }
 
 def main(model_path):
     """
@@ -66,7 +89,7 @@ def main(model_path):
 
     # arguments du trainer pour l'évaluation
     evaluation_args = TrainingArguments(
-        output_dir="./evaluation_output",
+        output_dir=OUTPUT_DIR,
         per_device_eval_batch_size=64,
     )
 
