@@ -13,13 +13,7 @@ class BERTTrainer:
         self.val_loader = val_loader
         self.num_labels = num_labels
         self.device = device
-        self.criterion = lambda logits, targets: sigmoid_focal_loss(
-            inputs=logits,  # logits bruts
-            targets=targets.float(),  # multi-hot vector de float
-            alpha=0.25,
-            gamma=2.0,
-            reduction="mean"
-        )
+        self.criterion = nn.BCEWithLogitsLoss()
 
     def train(self, epochs=3, lr=2e-5, weight_decay=0.01, file_name='bert_multilabel.pt'):
       optimizer = optim.AdamW(self.model.parameters(), lr=lr, weight_decay=weight_decay)
