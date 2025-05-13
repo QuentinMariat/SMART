@@ -73,20 +73,21 @@ class ManualEmbeddingTrainer:
                 print(f"Step {step} | Loss: {loss.item():.4f}")
         return self.embedding_weights[token_id].detach()
 
-# Exemple d'utilisation
 if __name__ == "__main__":
     vocab_size = 5500
-    embedding_dim = 256
-    trainer = ManualEmbeddingTrainer(vocab_size, embedding_dim)
+    embed_size = 256
+    seq_len = 10  # Longueur de la séquence
 
-    # Affiche un vecteur d'embedding avant apprentissage
-    token_ids = torch.tensor([12, 432, 8, 999])
-    print("Embedding initial pour le token 12 :")
-    print(trainer.get_embedding(token_ids)[0])
+    # Crée un batch de 1 séquence de longueur 10
+    token_ids = torch.tensor([[12, 432, 8, 999, 1, 234, 77, 321, 1024, 45]])  # (1, 10)
+    segment_ids = torch.zeros_like(token_ids)  # Tous dans le segment 0
 
-    # Entraîne le token 12 à ressembler à un vecteur de 1
-    target = torch.ones(embedding_dim)
-    learned_vector = trainer.train_token(torch.tensor([12]), target, steps=100)
+    # Initialise l'embedding
+    bert_embedding = BERTEmbedding(vocab_size=vocab_size, embed_size=embed_size, seq_len=seq_len)
 
-    print("\nVecteur appris pour le token 12 :")
-    print(learned_vector)
+    # Calcule les embeddings
+    embeddings = bert_embedding(token_ids)  # (1, 10, 256)
+
+    # Affiche le premier vecteur d'embedding
+    print("Premier vecteur d'embedding :")
+    print(embeddings[0, 0])  # Shape: (256,)
