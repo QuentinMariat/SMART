@@ -3,6 +3,9 @@ import torch.nn as nn
 import torch.optim as optim
 from sklearn.metrics import f1_score, accuracy_score
 from tqdm import tqdm
+from transformers import get_linear_schedule_with_warmup
+
+from src.config.settings import EMOTION_THRESHOLDS
 
 class BERTTrainer:
     def __init__(self, model, train_loader, val_loader, num_labels, device='cuda'):
@@ -12,11 +15,18 @@ class BERTTrainer:
         self.num_labels = num_labels
         self.device = device
         self.criterion = nn.BCELoss()  # car le modèle renvoie des probas (sigmoid)
+        self.thresholds = torch.tensor(list(EMOTION_THRESHOLDS.values()), device=self.device)
 
     def train(self, epochs=3, lr=2e-5, weight_decay=0.01, file_name='bert_multilabel.pt'):
-      optimizer = optim.AdamW(self.model.parameters(), lr=lr, weight_decay=weight_decay)
+        optimizer = optim.AdamW(self.model.parameters(), lr=lr, weight_decay=weight_decay)
+        total_steps = len(self.train_loader) * epochs
+        scheduler = get_linear_schedule_with_warmup(
+        optimizer,
+        num_warmup_steps=int(0.1 * total_steps),
+        num_training_steps=total_steps
+)
 
-      for epoch in range(epochs):
+        for epoch in range(epochs):
           print(f'Epoch {epoch + 1}/{epochs}')
           self.model.train()
           train_loss = 0.0
@@ -33,6 +43,7 @@ class BERTTrainer:
               loss.backward()
               nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
               optimizer.step()
+              scheduler.step()
 
               train_loss += loss.item()
               pbar.set_postfix({'loss': loss.item()})
@@ -42,8 +53,8 @@ class BERTTrainer:
 
           self.evaluate()
 
-      torch.save(self.model.state_dict(), file_name)
-      print(f"✅ Modèle sauvegardé sous '{file_name}'")
+        torch.save(self.model.state_dict(), file_name)
+        print(f"✅ Modèle sauvegardé sous '{file_name}'")
       
 
     def evaluate(self):
@@ -62,7 +73,7 @@ class BERTTrainer:
                 loss = self.criterion(outputs, labels)
                 val_loss += loss.item()
 
-                pred = (outputs > 0.5).float().cpu().numpy()
+                pred = (outputs > self.thresholds).float().cpu().numpy()
                 target = labels.cpu().numpy()
 
                 preds.extend(pred)
@@ -81,7 +92,7 @@ class BERTTrainer:
           for batch in tqdm(test_loader, desc="Predicting", leave=False):
               input_ids = batch['input_ids'].to(self.device)
               outputs = self.model(input_ids)
-              predicted = (outputs > 0.5).int().cpu().numpy()
+              predicted = (outputs > self.thresholds).int().cpu().numpy()
               preds.extend(predicted)
       return preds
 
@@ -100,7 +111,7 @@ class BERTTrainer:
               loss = self.criterion(outputs, labels)
               val_loss += loss.item()
 
-              pred = (outputs > 0.5).float().cpu().numpy()
+              pred = (outputs > self.thresholds).float().cpu().numpy()
               target = labels.cpu().numpy()
 
               preds.extend(pred)
