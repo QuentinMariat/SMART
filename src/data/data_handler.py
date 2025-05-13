@@ -4,7 +4,7 @@ from datasets import load_dataset
 import torch
 from src.config.settings import MODEL_NAME, DATASET_NAME, NUM_LABELS
 
-def load_and_preprocess_data(tokenizer=None, max_train_samples=None):
+def load_and_preprocess_data(tokenizer=None, max_train_samples=None, max_val_samples=None, max_test_samples=None):
     print(f"Loading dataset: {DATASET_NAME}")
     ds = load_dataset(DATASET_NAME)
 
@@ -14,6 +14,18 @@ def load_and_preprocess_data(tokenizer=None, max_train_samples=None):
             list(range(min(max_train_samples, len(ds["train"]))))
         )
         print(f"→ Train subset: {len(ds['train'])} exemples retenus")
+    
+    if max_val_samples is not None:
+        ds["validation"] = ds["validation"].shuffle(seed=42).select(
+            list(range(min(max_val_samples, len(ds["validation"]))))
+        )
+        print(f"→ Validation subset: {len(ds['validation'])} exemples retenus")
+
+    if max_test_samples is not None:
+        ds["test"] = ds["test"].shuffle(seed=42).select(
+            list(range(min(max_test_samples, len(ds["test"]))))
+        )
+        print(f"→ Test subset: {len(ds['test'])} exemples retenus")
 
     # 2) Création des labels multi-hot
     def create_multi_hot_labels(examples):

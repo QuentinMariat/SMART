@@ -11,7 +11,7 @@ loguru
 huggingface-hub==0.30.2
 numpy==2.2.5
 scikit-learn==1.6.1
-tokenizers
+tokenizers==0.19.1
 torch==2.7.0
 transformers==4.40.0
 youtube-comment-downloader==0.1.76
