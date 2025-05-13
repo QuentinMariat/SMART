@@ -7,8 +7,7 @@ from torch.utils.data import DataLoader
 from transformers import AutoModel
 from src.data.data_handler import load_and_preprocess_data
 from models.bert.bert_trainer import BERTTrainer  # ta classe Trainer existante
-from models.bert.bert import BERTForMultiLabelEmotion
-from models.bert.bert_pretrainer import BERTForMLMPretraining
+from models.bert.bert import BERTForMultiLabelEmotion, BERTForMLMPretraining
 from transformers import AutoTokenizer
 from src.config.settings import MODEL_NAME, EMOTION_LABELS
 
