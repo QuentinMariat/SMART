@@ -15,7 +15,8 @@ class BERTTrainer:
         self.num_labels = num_labels
         self.device = device
         self.criterion = nn.BCELoss()  # car le modèle renvoie des probas (sigmoid)
-        self.thresholds = torch.tensor(list(EMOTION_THRESHOLDS.values()), device=self.device)
+        #self.thresholds = torch.tensor(list(EMOTION_THRESHOLDS.values()), device=self.device)
+        self.thresholds = 0,5
 
     def train(self, epochs=3, lr=2e-5, weight_decay=0.01, file_name='bert_multilabel.pt'):
         optimizer = optim.AdamW(self.model.parameters(), lr=lr, weight_decay=weight_decay)

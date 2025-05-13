@@ -4,15 +4,25 @@
 MODEL_NAME = "distilbert-base-uncased"
 # MODEL_NAME = "bert-base-uncased"
 
-DATASET_NAME = "go_emotions"
+
+DATASET_NAME = "data/raw/combined_emotions.csv"
 
 EMOTION_LABELS = [
-    'admiration', 'amusement', 'anger', 'annoyance', 'approval', 'caring',
-    'confusion', 'curiosity', 'desire', 'disappointment', 'disapproval',
-    'disgust', 'embarrassment', 'excitement', 'fear', 'gratitude',
-    'grief', 'joy', 'love', 'nervousness', 'optimism', 'pride',
-    'realization', 'relief', 'remorse', 'sadness', 'surprise', 'neutral'
+    'joy','sad','anger','fear','love','surprise'
 ]
+
+"""
+DATASET_NAME = "sentiment_emotions"
+
+EMOTION_LABELS = [
+    'admiration', 'amusement', 'anger', 'annoyance', 'approval',
+    'caring', 'confusion', 'curiosity', 'desire', 'disappointment',
+    'disapproval', 'disgust', 'embarrassment', 'excitement', 'fear',
+    'gratitude', 'grief', 'joy', 'love', 'nervousness', 'optimism',
+    'pride', 'realization', 'relief', 'remorse', 'sadness', 'surprise',
+    'neutral'
+]
+"""
 
 EMOTION_THRESHOLDS = {
                         'admiration': 0.25,
