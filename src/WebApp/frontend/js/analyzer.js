@@ -74,17 +74,20 @@ function initAnalyzer() {
         analyzeBtn.disabled = true;
         
         // Simulate API call with timeout
-        setTimeout(() => {
+        setTimeout(async () => {
             // For demo purposes, we'll generate mock data
             //const mockData = generateMockAnalysis();
-            const mockData = fetchAnalysisFromAPI(url, currentPlatform);
+            const mockData = await fetchAnalysisFromAPI(url, currentPlatform);
             
+            console.log("étape 1");
             // Display results
-            displayResults(mockData);
-            
+            //displayResults(mockData);
+            console.log("étape 2");
             // Reset button
             analyzeBtn.innerHTML = '<i class="fas fa-chart-bar mr-2"></i> Analyze Sentiment';
+            console.log("étape 3");
             analyzeBtn.disabled = false;
+            console.log("étape 4");
         }, 2000);
     });
     
@@ -235,10 +238,13 @@ function displayResults(data) {
     negativeBar.style.width = `${data.negative * 100}%`;
     
     // Display comments
+    console.log("étape 1.1")
     renderComments(data.comments);
+    console.log("étape 1.2")
     
     // Scroll to results
     resultsContainer.scrollIntoView({ behavior: 'smooth' });
+    console.log("étape 1.3");
 }
 
 // Render comments
