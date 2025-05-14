@@ -107,13 +107,8 @@ def analyze_youtube_comments_with_model(comments_file):
                 if pd.isna(comment_text) or comment_text.strip() == "":
                     continue  # Ignorer les commentaires vides
                 
-                # Appliquer d'abord la détection heuristique pour les cas simples
-                simple_label = analyze_text_patterns(comment_text)
-                if simple_label != "neutral":
-                    emotion = simple_label
-                else:
-                    # Prédire l'émotion pour ce commentaire avec le modèle
-                    emotion = predict_emotion(comment_text, model, tokenizer, ID2LABEL, threshold)
+                # Prédire l'émotion pour ce commentaire avec le modèle
+                emotion = predict_emotion(comment_text, model, tokenizer, ID2LABEL, threshold)
                 
                 # Enregistrer le label dans le DataFrame
                 df.at[idx, 'label'] = emotion
