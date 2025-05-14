@@ -3,7 +3,7 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Analyseur de Sentiment</title>
+        <title>Analyseur de Sentiments</title>
 
         <!-- External dependencies -->
         <script src="https://cdn.tailwindcss.com"></script>
@@ -151,7 +151,7 @@
                             <h1
                                 class="mt-2 text-3xl font-extrabold text-gray-900"
                             >
-                                Analyseur de Sentiment
+                                Analyseur de Sentiments
                             </h1>
                             <p class="mt-3 text-gray-600">
                                 Notre outil avancé alimenté par l'IA analyse le
@@ -207,7 +207,7 @@
                             Rapports Détaillés
                         </h3>
                         <p class="text-gray-600">
-                            Obtenez des analyses de sentiment complètes.
+                            Obtenez des analyses de sentiments complètes.
                         </p>
                     </div>
                 </div>
@@ -254,7 +254,7 @@
                                     Obtenez des Insights
                                 </h3>
                                 <p class="text-gray-600 mt-1">
-                                    Recevez un rapport d'analyse de sentiment
+                                    Recevez un rapport d'analyse de sentiments
                                     détaillé avec les tendances.
                                 </p>
                             </div>
@@ -272,7 +272,7 @@
                     >
                         <h2 class="text-xl font-bold flex items-center">
                             <i class="fas fa-chart-pie mr-2"></i> Analyse de
-                            Sentiment
+                            Sentiments
                         </h2>
                     </div>
 
@@ -311,14 +311,13 @@
                                 class="bg-[#8C1E7D] text-white rounded-lg px-6 py-3 hover:bg-grey-700 transition duration-300 flex items-center"
                             >
                                 <i class="fas fa-chart-bar mr-2"></i> Analyser
-                                le Sentiment
+                                les sentiments
                             </button>
                             <button
                                 id="sample-btn"
                                 class="text-sm bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition duration-300 flex items-center"
                             >
-                                <i class="fas fa-lightbulb mr-2"></i> URL
-                                Exemple
+                                <i class="fas fa-lightbulb mr-2"></i> Exemple d'URL
                             </button>
                         </div>
                     </div>
@@ -522,12 +521,12 @@
             <div id="technical-page" class="page-transition hidden">
                 <div class="bg-white rounded-xl shadow-xl p-6 mb-8">
                     <h1 class="text-3xl font-bold mb-6">
-                        Comment Nous Analysons le Sentiment
+                        Comment Analysons Nous Les Sentiments ?
                     </h1>
 
                     <div class="prose max-w-none">
                         <p class="mb-4">
-                            Notre analyseur de sentiment est alimenté par des
+                            Notre analyseur de sentiments est alimenté par des
                             modèles basés sur les transformers, la même
                             architecture utilisée par les modèles de langage de
                             pointe comme BERT et GPT. Ces modèles excellent dans
@@ -536,8 +535,63 @@
                         </p>
 
                         <h2 class="text-2xl font-bold mt-8 mb-4">
-                            Architecture Transformer
+                            1ère étape : La tokenisation
                         </h2>
+
+                        <p class="mb-4">
+                            La première étape de l'analyse consiste à
+                            transformer le texte brut en une séquence de "tokens".
+                            Nous utilisons une méthode de tokenisation, appelé BPE, qui divise les
+                            mots en sous-mots, en fonction de leur fréquence
+                            d'apparition. 
+                            Chaque sous-mot est converti en un identifiant
+                            numérique unique. Cela permet au modèle de traiter le
+                            texte de manière efficace.
+                        </p>
+
+                        <img
+                            src="https://miro.medium.com/v2/resize:fit:518/1*W94_K5Mx7BanqeHfEs0TKg.png"
+                            alt="Tokenisation"
+                            class="w-full h-auto rounded-lg shadow-lg mb-4 mx-auto"
+                            style="max-width: 600px"
+                        />
+
+
+                        <h2 class="text-2xl font-bold mt-8 mb-4">
+                            2ème étape : L'embedding
+                        </h2>
+
+                        <p class="mb-4">
+                            Une fois le texte "tokenisé", chaque token est
+                            converti en un vecteur d'embedding. Ces vecteurs
+                            capturent la signification sémantique des mots et
+                            permettent au modèle de comprendre les relations
+                            contextuelles entre eux.
+                        </p>
+
+                        <img
+                            src="https://miro.medium.com/v2/resize:fit:1400/1*-LJr59LJCTLL4YJodiJsVA.png"
+                            alt="embedding"
+                            class="w-full h-auto rounded-lg shadow-lg mb-4 mx-auto"
+                            style="max-width: 600px"
+                        />
+
+                        <h2 class="text-2xl font-bold mt-8 mb-4">
+                            3ème étape: le transformer
+                        </h2>
+
+                        <p class="mb-4">
+                            Le modèle utilise une architecture de "transformer".
+                            Le Transformer est un modèle qui lit un texte en entier et comprend comment les mots sont liés entre eux.
+                            Grâce à un mécanisme appelé attention, il peut se concentrer sur les mots importants, peu importe où ils
+                             se trouvent dans la phrase. Par exemple, il peut comprendre que dans "Le chien que Paul a vu courait",
+                            "chien" est celui qui court, même si le mot est loin du verbe.
+
+                            L’encodeur du Transformer traite tout le texte en parallèle,
+                             ce qui le rend rapide et efficace pour comprendre des phrases, détecter des sentiments ou analyser le sens général.
+                            
+                            
+                        </p>
 
                         <div class="tech-diagram">
                             <div class="diagram-container">
@@ -720,11 +774,11 @@
             <div id="about-page" class="page-transition hidden">
                 <div class="bg-white rounded-xl shadow-xl p-6 mb-8">
                     <h1 class="text-3xl font-bold mb-6">
-                        À Propos de l'Analyseur de Sentiment
+                        À Propos de l'Analyseur de Sentiments
                     </h1>
                     <div class="prose max-w-none">
                         <p class="mb-4">
-                            L'Analyseur de Sentiment a été créé pour aider les
+                            L'Analyseur de Sentiments a été créé pour aider les
                             entreprises, les créateurs et les chercheurs à
                             comprendre l'opinion publique à travers les
                             interactions sur les réseaux sociaux. Notre outil
