@@ -172,7 +172,7 @@ async def generate_analysis(url) -> DetailedAnalysisResponse:
             # Mapper les résultats avec les top_comments pour conserver les likes et timestamps
             comment_map = {item.get("text", ""): item for item in top_comments}
             
-            for result in results[:10]:  # Limiter à 10 commentaires pour l'affichage
+            for result in results[:30]:  # Limiter à 30 commentaires pour l'affichage (augmenté de 10)
                 text = result["text"]
                 emotions = result["emotions"]
                 
@@ -202,8 +202,8 @@ async def generate_analysis(url) -> DetailedAnalysisResponse:
                 )
             
             # Si nous n'avons pas assez de commentaires du modèle, ajouter des commentaires des top_comments
-            if len(comment_objs) < 10 and top_comments:
-                logger.info(f"Ajouter {10 - len(comment_objs)} commentaires supplémentaires des top_comments")
+            if len(comment_objs) < 30 and top_comments:
+                logger.info(f"Ajouter {30 - len(comment_objs)} commentaires supplémentaires des top_comments")
                 
                 # Fonction pour convertir les top_comments en objets Comment
                 def comment_to_obj(item):
@@ -218,8 +218,8 @@ async def generate_analysis(url) -> DetailedAnalysisResponse:
                         time=item.get("time", "00:00")
                     )
                 
-                # Convertir jusqu'à 10 - len(comment_objs) commentaires des top_comments
-                for item in top_comments[:10 - len(comment_objs)]:
+                # Convertir jusqu'à 30 - len(comment_objs) commentaires des top_comments
+                for item in top_comments[:30 - len(comment_objs)]:
                     # Vérifier si ce commentaire n'est pas déjà dans comment_objs
                     text = item.get("text", "")
                     if not any(c.text == text for c in comment_objs):
