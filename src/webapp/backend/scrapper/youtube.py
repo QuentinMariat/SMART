@@ -5,6 +5,10 @@ import os
 import csv
 import logging
 import sys
+from dotenv import load_dotenv
+
+# Charger les variables d'environnement depuis le fichier .env
+load_dotenv()
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(
@@ -34,25 +38,19 @@ def get_video_id(url):
 
 VIDEO_URL = 'https://www.youtube.com/watch?v=0uzCUZeBi6c'
 API_URL = 'https://www.googleapis.com/youtube/v3/commentThreads'
-# Load API key from JSON file
-config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
-try:
-    with open(config_path, "r") as file:
-        config = json.load(file)
-    API_KEY = config["youtube"]["apiKey"]
-except FileNotFoundError:
-    logger.warning(f"Config file not found at: {config_path}")
-    API_KEY = input("Please enter your YouTube API Key: ")
-except KeyError:
-    logger.warning("YouTube API key not found in config file")
-    API_KEY = input("Please enter your YouTube API Key: ")
+
+# Récupérer la clé API YouTube depuis les variables d'environnement
+API_KEY = os.getenv("YOUTUBE_API_KEY")
+if not API_KEY:
+    logger.warning("YOUTUBE_API_KEY non trouvée dans le fichier .env")
+    API_KEY = input("Veuillez entrer votre clé API YouTube: ")
 
 
 def fetch_comments(video_url):
 
     VIDEO_ID = get_video_id(video_url)
     if not VIDEO_ID:
-        logger.error("[YoutubeScrapper ❌] Erreur : Impossible de récupérer l'ID vidéo à partir de l'URL fournie.")
+        logger.error("[YoutubeScrapper] Erreur : Impossible de récupérer l'ID vidéo à partir de l'URL fournie.")
         raise ValueError("L'URL fournie ne contient pas d'ID vidéo valide : " + video_url)
     COMMENTS = []
 
@@ -69,9 +67,9 @@ def fetch_comments(video_url):
         response = requests.get(API_URL, params=params)
         data = response.json()
         if 'items' not in data:
-            logger.error("[YoutubeScrapper ❌] Erreur lors de la récupération des commentaires :", json.dumps(data, indent=2))
+            logger.error("[YoutubeScrapper] Erreur lors de la récupération des commentaires :", json.dumps(data, indent=2))
             if response.status_code != 200:
-                logger.error(f"[YoutubeScrapper ❌] HTTP {response.status_code} - Erreur API : {response.text}")
+                logger.error(f"[YoutubeScrapper] HTTP {response.status_code} - Erreur API : {response.text}")
                 raise Exception(f"[fetch_comments] Erreur lors de l'appel à l'API YouTube: Status Code {response.status_code}, youtube ID : {VIDEO_ID},Response: {response.text[:200]}, erreur api : {response.text}")
             raise ValueError(f"L'API YouTube n'a pas retourné de commentaires. Peut-être un problème avec l'ID vidéo ou la clé API ?")
         
@@ -133,11 +131,11 @@ def getTopComments(url):
     data = response.json()
 
     if 'items' not in data:
-        logger.error("[YoutubeScrapper ❌] Erreur API YouTube :", json.dumps(data, indent=2))
+        logger.error("[YoutubeScrapper] Erreur API YouTube :", json.dumps(data, indent=2))
         if response.status_code != 200:
-            logger.error(f"[YoutubeScrapper ❌] HTTP {response.status_code} - Erreur API : {response.text}")
+            logger.error(f"[YoutubeScrapper] HTTP {response.status_code} - Erreur API : {response.text}")
             raise Exception(f"[getTopComments] Erreur lors de l'appel à l'API YouTube: Status Code {response.status_code}, Response: {response.text[:200]}")
-        raise ValueError("Pas de 'items' dans la réponse. Vérifie la vidéo, l’API key, ou ton quota." + data)
+        raise ValueError("Pas de 'items' dans la réponse. Vérifie la vidéo, l'API key, ou ton quota." + data)
 
     for item in data["items"]:
         snippet = item["snippet"]["topLevelComment"]["snippet"]
