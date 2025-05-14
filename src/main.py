@@ -11,7 +11,7 @@ from src.data.data_handler import preprocess_dataset, preprocess_wikipedia_mlm, 
 from models.bert.bert_trainer import BERTTrainer  # ta classe Trainer existante
 from models.bert.bert import BERTForMultiLabelEmotion, BERTForMLMPretraining
 from transformers import AutoTokenizer
-from src.config.settings import MODEL_NAME, EMOTION_LABELS
+from src.config.settings import MODEL_NAME, EMOTION_LABELS, MAX_SEQ_LENGTH, TRAINING_ARGS
 
 # Simple modèle pour classification multilabel
 class SimpleClassifier(torch.nn.Module):
@@ -59,80 +59,76 @@ def collate_fn(batch):
 
 
 def train_model(device, fast_dev=False, pretrained_model=None):
-    # 1. Charger et prétraiter les données
+    # 1. Load and preprocess data
+    tokenizer = load_tokenizer()
+    
     if fast_dev:
-        # Load tokenizer
-        tokenizer = load_tokenizer()
-        # Load dataset with subsampling
-        dataset = loading_dataset(max_train_samples=5000, max_val_samples=5000, max_test_samples=5000)
-        # Preprocess dataset
-        train_dataset, val_dataset, test_dataset, tokenizer = preprocess_dataset(dataset, tokenizer)
+        dataset = loading_dataset(max_train_samples=5000, max_val_samples=1000, max_test_samples=1000)
     else:
-        # Load tokenizer
-        tokenizer = load_tokenizer()
-        # Load dataset with subsampling
-        dataset = loading_dataset(max_train_samples=5000, max_val_samples=5000, max_test_samples=5000)
-        # Preprocess dataset
-        train_dataset, val_dataset, test_dataset, tokenizer = preprocess_dataset(dataset, tokenizer)
+        dataset = loading_dataset(max_train_samples=50000, max_val_samples=5000, max_test_samples=5000)
+    
+    # Preprocess dataset with the new max_length parameter
+    train_dataset, val_dataset, test_dataset, tokenizer = preprocess_dataset(
+        dataset, 
+        tokenizer,
+        max_length=MAX_SEQ_LENGTH
+    )
 
-    # 2. DataLoaders
-    train_loader = DataLoader(train_dataset, batch_size=16, shuffle=True, collate_fn=collate_fn)
-    val_loader = DataLoader(val_dataset, batch_size=16, collate_fn=collate_fn)
+    # 2. Create dataloaders with larger batch size
+    train_loader = DataLoader(
+        train_dataset, 
+        batch_size=TRAINING_ARGS["per_device_train_batch_size"], 
+        shuffle=True, 
+        collate_fn=collate_fn
+    )
+    val_loader = DataLoader(
+        val_dataset, 
+        batch_size=TRAINING_ARGS["per_device_eval_batch_size"], 
+        collate_fn=collate_fn
+    )
 
-    # 3. Modèle
-    num_labels = train_dataset[0]['labels'].shape[0]  # inférer le nombre de labels
+    # 3. Initialize model
+    num_labels = train_dataset[0]['labels'].shape[0]
     vocab_size = tokenizer.vocab_size
+
     if pretrained_model:
-        print(f'Chargement du modèle pré-entraîné à partir de {pretrained_model}')
+        print(f'Loading pretrained model: {MODEL_NAME}')
         model = BERTForMultiLabelEmotion(
             num_labels=num_labels,
             use_pretrained=True,
-            pretrained_model_name="bert-base-uncased"
+            pretrained_model_name=MODEL_NAME
         )
     else:
+        print('Training from scratch')
         model = BERTForMultiLabelEmotion(
             vocab_size=vocab_size,
             num_labels=num_labels,
             use_pretrained=False
         )
 
-
-    # if pretrained_model:
-    #     ckpt = torch.load(pretrained_model, map_location=device)
-
-    #     ckpt_stripped = {}
-    #     for k, v in ckpt.items():
-    #         if k.startswith("bert."):
-    #             new_key = k[len("bert."):]
-    #             ckpt_stripped[new_key] = v
-
-    #     # Charger les poids dans model.bert
-    #     missing_keys, unexpected_keys = model.bert.load_state_dict(ckpt_stripped, strict=False)
-
-    #     print("✅ Poids chargés dans model.bert")
-
-    #     print("Missing keys:", missing_keys)
-    #     print("Unexpected keys:", unexpected_keys)
-
     model.to(device)
 
-
-    # 4. Trainer
+    # 4. Initialize trainer
     trainer = BERTTrainer(model, train_loader, val_loader, num_labels, device=device)
 
-    # 5. Entraînement
-    trainer.train(epochs=3, lr=2e-5, weight_decay=0.01)
+    # 5. Train with the new configuration
+    trainer.train(
+        epochs=TRAINING_ARGS["num_train_epochs"],
+        lr=2e-5,
+        weight_decay=TRAINING_ARGS["weight_decay"]
+    )
 
-    # 8. Test (évaluation sur les données de test)
-    test_loader = DataLoader(test_dataset, batch_size=16, collate_fn=collate_fn)
-    predictions = trainer.predict(test_loader)
-
-    # Exemple d'affichage pour les 5 premières prédictions
-    print("\nExemples de prédictions :")
-    for i, pred in enumerate(predictions[:5]):
-        print(f"Sample {i}: Predicted labels = {pred}")
-
+    # 6. Evaluate on test set
+    test_loader = DataLoader(
+        test_dataset, 
+        batch_size=TRAINING_ARGS["per_device_eval_batch_size"], 
+        collate_fn=collate_fn
+    )
+    
+    print("\nFinal Evaluation on Test Set:")
     trainer.evaluate_on_test(test_loader)
+
+    return model, tokenizer
 
 def pretrain_model(device, fast_dev=False):
     wiki_dataset = WikipediaMLMDataset(language="en", version="20231101", num_examples=1000)

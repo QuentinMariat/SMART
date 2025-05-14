@@ -1,10 +1,14 @@
 # modèle pré-entraîné de Hugging Face à utiliser
-# distilbert-base-uncased : plus petit et plus rapide
-# bert-base-uncased : plus grand mais plus performant
-MODEL_NAME = "bert-base-uncased"
-# MODEL_NAME = "bert-base-uncased"
+# Options:
+# - microsoft/deberta-v3-base : Better performance than BERT
+# - roberta-base : Better than BERT for emotion detection
+# - xlm-roberta-base : For multilingual support
+MODEL_NAME = "roberta-base"
 
 DATASET_NAME = "go_emotions"
+
+# Increased sequence length based on typical emotion text lengths
+MAX_SEQ_LENGTH = 256
 
 EMOTION_LABELS = [
     'admiration', 'amusement', 'anger', 'annoyance', 'approval', 'caring',
@@ -50,21 +54,24 @@ ID2LABEL = {i: label for i, label in enumerate(EMOTION_LABELS)}
 NUM_LABELS = len(EMOTION_LABELS)
 
 BASE_MODEL_NAME = "distilbert-base-uncased"
-# hyperparamètres à ajuster pour l'entraînement
+# Adjusted training parameters for multi-label learning
 TRAINING_ARGS = {
     "output_dir": "./results",
-    "num_train_epochs": 3,
-    "per_device_train_batch_size": 16,
+    "num_train_epochs": 10,
+    "per_device_train_batch_size": 32,
     "per_device_eval_batch_size": 64,
-    "warmup_steps": 500,
+    "warmup_ratio": 0.1,  # 10% of training steps
     "weight_decay": 0.01,
     "logging_dir": "./logs",
-    "logging_steps": 10,
-    "evaluation_strategy": "epoch",
-    "save_strategy": "epoch",
+    "logging_steps": 100,
+    "evaluation_strategy": "steps",
+    "eval_steps": 500,
+    "save_strategy": "steps",
+    "save_steps": 500,
     "load_best_model_at_end": True,
     "metric_for_best_model": "f1",
-    "greater_is_better": True
+    "greater_is_better": True,
+    "fp16": True  # Enable mixed precision training
 }
 
 # seuil de probabilité pour la classification multi-label : une prédiction est considérée positive pour une émotion si sa probabilité dépasse ce seuil.

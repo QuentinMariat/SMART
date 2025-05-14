@@ -75,28 +75,52 @@ class BERTForMultiLabelEmotion(torch.nn.Module):
         self.use_pretrained = use_pretrained
 
         if use_pretrained and pretrained_model_name:
-            # Utiliser un modèle Hugging Face
+            print(f"🔄 Loading pretrained model: {pretrained_model_name}")
             self.bert = AutoModel.from_pretrained(pretrained_model_name)
+            print(f"✅ Successfully loaded pretrained model")
+            print(f"Model config: {self.bert.config}")
             hidden_size = self.bert.config.hidden_size
+            
+            # Freeze the bottom layers for transfer learning
+            modules = list(self.bert.modules())
+            num_layers = sum(1 for m in modules if isinstance(m, type(modules[-1])))
+            for param in list(self.bert.parameters())[:(num_layers//2)]:
+                param.requires_grad = False
+            print(f"💡 Froze bottom {num_layers//2} layers for transfer learning")
         else:
-            # Utiliser ton propre modèle BERT
+            print("⚠️ Using custom BERT model without pretraining")
             assert vocab_size is not None, "vocab_size must be provided if not using pretrained model"
             self.bert = BERT(vocab_size, d_model, n_layers, heads, dropout)
             hidden_size = d_model
 
-        # Classification head
-        self.classifier = MultiLabelEmotionClassifier(hidden_size, num_labels, dropout)
+        # Enhanced classification head for multi-label
+        self.classifier = torch.nn.Sequential(
+            torch.nn.Dropout(dropout),
+            torch.nn.Linear(hidden_size, hidden_size),
+            torch.nn.GELU(),
+            torch.nn.LayerNorm(hidden_size),
+            torch.nn.Dropout(dropout),
+            torch.nn.Linear(hidden_size, num_labels),
+            torch.nn.Sigmoid()
+        )
 
     def forward(self, input_ids, attention_mask=None, token_type_ids=None):
         if self.use_pretrained:
-            outputs = self.bert(input_ids=input_ids,
-                                attention_mask=attention_mask,
-                                token_type_ids=token_type_ids)
+            # Handle models that don't use token_type_ids (like RoBERTa)
+            if 'roberta' in self.bert.config.model_type:
+                outputs = self.bert(input_ids=input_ids,
+                                  attention_mask=attention_mask)
+            else:
+                outputs = self.bert(input_ids=input_ids,
+                                  attention_mask=attention_mask,
+                                  token_type_ids=token_type_ids)
             sequence_output = outputs.last_hidden_state  # (batch, seq_len, hidden)
+            pooled_output = sequence_output[:, 0]  # Use [CLS] token
         else:
             sequence_output = self.bert(input_ids, token_type_ids)
+            pooled_output = sequence_output[:, 0]
 
-        return self.classifier(sequence_output)
+        return self.classifier(pooled_output)
 
     
 # Example usage:

@@ -15,89 +15,146 @@ class BERTTrainer:
         self.val_loader = val_loader
         self.num_labels = num_labels
         self.device = device
-        self.criterion = nn.BCELoss()  # car le modèle renvoie des probas (sigmoid)
+        
+        # Calculate class weights from training data
+        print("Calculating class weights...")
+        label_counts = torch.zeros(num_labels)
+        total_samples = 0
+        for batch in train_loader:
+            labels = batch['labels']
+            label_counts += labels.sum(dim=0)
+            total_samples += len(labels)
+        
+        # Inverse frequency weighting with smoothing
+        class_weights = total_samples / (label_counts + 1)
+        class_weights = class_weights / class_weights.mean()  # normalize
+        self.class_weights = class_weights.to(device)
+        
+        print("Class weights:", self.class_weights.tolist())
+        
+        # Weighted BCE loss
+        self.criterion = lambda outputs, targets: torch.nn.BCELoss(weight=self.class_weights)(outputs, targets)
         self.thresholds = torch.tensor(list(EMOTION_THRESHOLDS.values()), device=self.device)
 
     def train(self, epochs=3, lr=2e-5, weight_decay=0.01, file_name='bert_multilabel.pt'):
         print(self.model)
-        optimizer = optim.AdamW([
-            {"params": self.model.bert.parameters(), "lr": lr},  # e.g. 2e-5
-            {"params": self.model.classifier.parameters(), "lr": 1e-3}
-        ], weight_decay=weight_decay)
+        
+        # Separate parameters for different learning rates
+        no_decay = ['bias', 'LayerNorm.weight']
+        optimizer_grouped_parameters = [
+            {
+                'params': [p for n, p in self.model.named_parameters() 
+                          if not any(nd in n for nd in no_decay) and p.requires_grad],
+                'weight_decay': weight_decay,
+                'lr': lr
+            },
+            {
+                'params': [p for n, p in self.model.named_parameters() 
+                          if any(nd in n for nd in no_decay) and p.requires_grad],
+                'weight_decay': 0.0,
+                'lr': lr
+            }
+        ]
+        
+        optimizer = optim.AdamW(optimizer_grouped_parameters)
         total_steps = len(self.train_loader) * epochs
         scheduler = get_linear_schedule_with_warmup(
-        optimizer,
-        num_warmup_steps=int(0.1 * total_steps),
-        num_training_steps=total_steps)
+            optimizer,
+            num_warmup_steps=int(0.1 * total_steps),  # 10% warmup
+            num_training_steps=total_steps
+        )
 
-        for param in self.model.bert.parameters():
-            param.requires_grad = False
+        best_f1 = 0.0
+        patience = 3
+        patience_counter = 0
 
         for epoch in range(epochs):
-          print(f'Epoch {epoch + 1}/{epochs}')
-          if epoch == 1:
-            for param in self.model.bert.parameters():
-                param.requires_grad = True
+            print(f'Epoch {epoch + 1}/{epochs}')
+            self.model.train()
+            train_loss = 0.0
 
-          self.model.train()
-          train_loss = 0.0
+            pbar = tqdm(self.train_loader, desc="Training", leave=False)
+            for batch in pbar:
+                input_ids = batch['input_ids'].to(self.device)
+                attention_mask = batch['attention_mask'].to(self.device)
+                labels = batch['labels'].to(self.device)
 
-          pbar = tqdm(self.train_loader, desc="Training", leave=False)
-          for batch in pbar:
-              input_ids = batch['input_ids'].to(self.device)
-              labels = batch['labels'].to(self.device)
+                # Forward pass
+                outputs = self.model(input_ids, attention_mask=attention_mask)
+                loss = self.criterion(outputs, labels)
 
-              outputs = self.model(input_ids)  # segment_info=None implicite
-              loss = self.criterion(outputs, labels)
+                # Backward pass
+                optimizer.zero_grad()
+                loss.backward()
+                torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
+                optimizer.step()
+                scheduler.step()
 
-              optimizer.zero_grad()
-              loss.backward()
+                train_loss += loss.item()
+                pbar.set_postfix({'loss': loss.item()})
 
-              nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
-              optimizer.step()
-              scheduler.step()
+            avg_train_loss = train_loss / len(self.train_loader)
+            print(f'Train Loss: {avg_train_loss:.4f}')
 
-              train_loss += loss.item()
-              pbar.set_postfix({'loss': loss.item()})
+            # Validation
+            val_metrics = self.evaluate()
+            current_f1 = val_metrics['f1']
 
-          avg_train_loss = train_loss / len(self.train_loader)
-          print(f'Train Loss: {avg_train_loss:.4f}')
+            # Save best model
+            if current_f1 > best_f1:
+                best_f1 = current_f1
+                torch.save(self.model.state_dict(), file_name)
+                print(f"✅ New best model saved with F1: {best_f1:.4f}")
+                patience_counter = 0
+            else:
+                patience_counter += 1
+                if patience_counter >= patience:
+                    print(f"Early stopping after {epoch + 1} epochs")
+                    break
 
-          self.evaluate()
-
-        torch.save(self.model.state_dict(), file_name)
-        print(f"✅ Modèle sauvegardé sous '{file_name}'")
-    
-    
-
+        # Load best model
+        self.model.load_state_dict(torch.load(file_name))
+        print(f"✅ Loaded best model with F1: {best_f1:.4f}")
 
     def evaluate(self):
         self.model.eval()
         val_loss = 0.0
-        preds = []
-        targets = []
+        all_preds = []
+        all_labels = []
 
-        pbar = tqdm(self.val_loader, desc="Evaluating", leave=False)
         with torch.no_grad():
-            for batch in pbar:
+            for batch in tqdm(self.val_loader, desc="Evaluating", leave=False):
                 input_ids = batch['input_ids'].to(self.device)
+                attention_mask = batch['attention_mask'].to(self.device)
                 labels = batch['labels'].to(self.device)
 
-                outputs = self.model(input_ids)
+                outputs = self.model(input_ids, attention_mask=attention_mask)
                 loss = self.criterion(outputs, labels)
                 val_loss += loss.item()
 
-                pred = (outputs > self.thresholds).float().cpu().numpy()
-                target = labels.cpu().numpy()
+                preds = (outputs > self.thresholds).float()
+                all_preds.append(preds.cpu())
+                all_labels.append(labels.cpu())
 
-                preds.extend(pred)
-                targets.extend(target)
+        all_preds = torch.cat(all_preds, dim=0).numpy()
+        all_labels = torch.cat(all_labels, dim=0).numpy()
 
-        avg_val_loss = val_loss / len(self.val_loader)
-        f1 = f1_score(targets, preds, average='micro')
-        acc = accuracy_score(targets, preds)
+        # Calculate metrics
+        metrics = {
+            'loss': val_loss / len(self.val_loader),
+            'f1': f1_score(all_labels, all_preds, average='micro'),
+            'f1_macro': f1_score(all_labels, all_preds, average='macro'),
+            'precision': precision_score(all_labels, all_preds, average='micro'),
+            'recall': recall_score(all_labels, all_preds, average='micro')
+        }
 
-        print(f'Val Loss: {avg_val_loss:.4f} | F1: {f1:.4f} | Acc: {acc:.4f}')
+        print(f"Val Loss: {metrics['loss']:.4f} | "
+              f"F1: {metrics['f1']:.4f} | "
+              f"F1-macro: {metrics['f1_macro']:.4f} | "
+              f"Precision: {metrics['precision']:.4f} | "
+              f"Recall: {metrics['recall']:.4f}")
+
+        return metrics
     
     def predict(self, test_loader):
       self.model.eval()
@@ -105,7 +162,8 @@ class BERTTrainer:
       with torch.no_grad():
           for batch in tqdm(test_loader, desc="Predicting", leave=False):
               input_ids = batch['input_ids'].to(self.device)
-              outputs = self.model(input_ids)
+              attention_mask = batch['attention_mask'].to(self.device)
+              outputs = self.model(input_ids, attention_mask=attention_mask)
               predicted = (outputs > self.thresholds).int().cpu().numpy()
               preds.extend(predicted)
       return preds
@@ -119,9 +177,10 @@ class BERTTrainer:
       with torch.no_grad():
           for batch in tqdm(test_loader, desc="Testing", leave=False):
               input_ids = batch['input_ids'].to(self.device)
+              attention_mask = batch['attention_mask'].to(self.device)
               labels = batch['labels'].to(self.device)
 
-              outputs = self.model(input_ids)
+              outputs = self.model(input_ids, attention_mask=attention_mask)
               loss = self.criterion(outputs, labels)
               val_loss += loss.item()
 

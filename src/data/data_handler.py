@@ -2,7 +2,7 @@ from datasets import load_dataset
 import torch
 from transformers import AutoTokenizer
 from datasets import ClassLabel, Sequence, Value, Features, Dataset
-from src.config.settings import MODEL_NAME, DATASET_NAME, NUM_LABELS
+from src.config.settings import MODEL_NAME, DATASET_NAME, NUM_LABELS, EMOTION_LABELS
 
 def load_tokenizer(tokenizer=None):
     """Load or return a tokenizer for the model."""
@@ -41,38 +41,71 @@ def loading_dataset(max_train_samples=None, max_val_samples=None, max_test_sampl
 
     return ds
 
-def preprocess_dataset(ds, tokenizer):
-    """Preprocess the dataset: create multi-hot labels, tokenize, cast labels, and set PyTorch format."""
-    # Create multi-hot labels
+def preprocess_dataset(ds, tokenizer, max_length=256):
+    """Preprocess the dataset with improved text cleaning and label handling."""
+    
+    # Text cleaning function
+    def clean_text(text):
+        # Remove extra whitespace
+        text = ' '.join(text.split())
+        # RoBERTa handles casing internally, no need to lowercase
+        return text
+    
+    # Apply text cleaning
+    print("Cleaning text...")
+    ds = ds.map(lambda x: {'text': clean_text(x['text'])})
+
+    # Create multi-hot labels with label statistics
     def create_multi_hot_labels(examples):
         batch = []
+        label_counts = [0] * NUM_LABELS
+        
         for label_list in examples["labels"]:
             vec = [0.0] * NUM_LABELS
             for idx in label_list:
                 if 0 <= idx < NUM_LABELS:
                     vec[idx] = 1.0
+                    label_counts[idx] += 1
             batch.append(vec)
+        
         examples["labels"] = batch
         return examples
 
     print("Creating multi-hot labels...")
     ds = ds.map(create_multi_hot_labels, batched=True)
 
-    # Tokenize each split
+    # Calculate and print label distribution
+    label_counts = [0] * NUM_LABELS
+    for example in ds["train"]:
+        for idx, value in enumerate(example["labels"]):
+            if value > 0:
+                label_counts[idx] += 1
+    
+    print("\nLabel distribution in training set:")
+    for idx, count in enumerate(label_counts):
+        print(f"{EMOTION_LABELS[idx]}: {count} ({count/len(ds['train'])*100:.2f}%)")
+
+    # Tokenize with dynamic max length based on dataset statistics
     def tokenize_fn(examples):
         return tokenizer(
             examples["text"],
             truncation=True,
             padding="max_length",
-            max_length=128
+            max_length=max_length,
+            return_attention_mask=True
         )
 
-    print("Tokenizing train split...")
+    print(f"\nTokenizing with max_length={max_length}...")
     train_tok = ds["train"].map(tokenize_fn, batched=True, remove_columns=["text"])
-    print("Tokenizing validation split...")
     val_tok = ds["validation"].map(tokenize_fn, batched=True, remove_columns=["text"])
-    print("Tokenizing test split...")
     test_tok = ds["test"].map(tokenize_fn, batched=True, remove_columns=["text"])
+
+    # Calculate sequence length statistics
+    lengths = [len(tokenizer.tokenize(text)) for text in ds["train"]["text"]]
+    print(f"\nSequence length statistics:")
+    print(f"Mean: {sum(lengths)/len(lengths):.1f}")
+    print(f"Max: {max(lengths)}")
+    print(f"95th percentile: {sorted(lengths)[int(len(lengths)*0.95)]}")
 
     # Cast labels to float
     def cast_labels(examples):
@@ -83,22 +116,13 @@ def preprocess_dataset(ds, tokenizer):
     val_tok = val_tok.map(cast_labels, batched=True)
     test_tok = test_tok.map(cast_labels, batched=True)
 
-    # Define float32 schema for labels
-    float_features = Features({
-        **train_tok.features,
-        "labels": Sequence(Value("float32"))
-    })
-
-    train_tok = train_tok.cast(float_features)
-    val_tok = val_tok.cast(float_features)
-    test_tok = test_tok.cast(float_features)
-
     # Set PyTorch format
-    train_tok.set_format("torch")
-    val_tok.set_format("torch")
-    test_tok.set_format("torch")
+    columns = ["input_ids", "attention_mask", "labels"]  # Removed token_type_ids as RoBERTa doesn't use them
+    train_tok.set_format("torch", columns=columns)
+    val_tok.set_format("torch", columns=columns)
+    test_tok.set_format("torch", columns=columns)
 
-    print("Data preprocessing complete.")
+    print("\nData preprocessing complete.")
     return train_tok, val_tok, test_tok, tokenizer
 
 def cache_dataset(self):
