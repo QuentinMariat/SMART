@@ -43,7 +43,7 @@ def clean_comment_text(text):
     return text.strip()
 
 
-VIDEO_URL = 'https://www.youtube.com/watch?v=0uzCUZeBi6c'
+VIDEO_URL = 'https://www.youtube.com/watch?v=Sg4GMVMdOPo&ab_channel=BroCode'
 API_URL = 'https://www.googleapis.com/youtube/v3/commentThreads'
 
 # Récupérer l'API key depuis les variables d'environnement (si python-dotenv est installé)
