@@ -55,7 +55,7 @@ class MultiLabelEmotionClassifier(torch.nn.Module):
         # bert_output: (batch_size, seq_len, hidden_size)
         cls_token = bert_output[:, 0]         # [CLS] token representation
         cls_token = self.dropout(cls_token)
-        logits = self.classifier_layer(cls_token)   # (batch_size, num_labels)
+        logits = self.classifier(cls_token)   # (batch_size, num_labels)
         return logits
 
 

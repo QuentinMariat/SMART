@@ -11,6 +11,8 @@ EMOTION_LABELS = [
     'joy','sad','anger','fear','love','surprise'
 ]
 
+NUM_LABELS = len(EMOTION_LABELS)
+
 """
 DATASET_NAME = "sentiment_emotions"
 

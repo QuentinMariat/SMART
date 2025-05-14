@@ -10,7 +10,7 @@ from src.data.data_handler import load_and_preprocess_csv
 from models.bert.bert_trainer import BERTTrainer  # ta classe Trainer existante
 from models.bert.bert import BERTForMultiLabelEmotion
 from transformers import AutoTokenizer
-from src.config.settings import MODEL_NAME, EMOTION_LABELS
+from src.config.settings import MODEL_NAME, EMOTION_LABELS, NUM_LABELS
 
 # Simple modèle pour classification multilabel
 class SimpleClassifier(torch.nn.Module):
@@ -34,16 +34,16 @@ def collate_fn(batch):
 def train_model(device, fast_dev=False):
     # 1. Charger et prétraiter les données
     if fast_dev:
-        train_dataset, val_dataset, test_dataset, tokenizer = load_and_preprocess_csv(csv_path="data/raw/combined_emotion.csv",max_train_samples=5000, max_val_samples=5000, max_test_samples=5000)
+        train_loader, val_loader, test_loader, tokenizer = load_and_preprocess_csv(csv_path="data/raw/combined_emotion.csv",max_train_samples=5000, max_val_samples=5000, max_test_samples=5000)
     else:
-        train_dataset, val_dataset, test_dataset, tokenizer = load_and_preprocess_csv(csv_path="data/raw/combined_emotion.csv")
+        train_loader, val_loader, test_loader, tokenizer = load_and_preprocess_csv(csv_path="data/raw/combined_emotion.csv")
 
     # 2. DataLoaders
-    train_loader = DataLoader(train_dataset, batch_size=16, shuffle=True, collate_fn=collate_fn)
-    val_loader = DataLoader(val_dataset, batch_size=16, collate_fn=collate_fn)
+    #train_loader = DataLoader(train_dataset, batch_size=16, shuffle=True, collate_fn=collate_fn)
+    #val_loader = DataLoader(val_dataset, batch_size=16, collate_fn=collate_fn)
 
     # 3. Modèle
-    num_labels = train_dataset[0]['labels'].shape[0]  # inférer le nombre de labels
+    num_labels = NUM_LABELS
     vocab_size = tokenizer.vocab_size
     model = BERTForMultiLabelEmotion(vocab_size=vocab_size, num_labels=num_labels)
 
@@ -54,7 +54,7 @@ def train_model(device, fast_dev=False):
     trainer.train(epochs=3, lr=2e-5, weight_decay=0.01)
 
     # 8. Test (évaluation sur les données de test)
-    test_loader = DataLoader(test_dataset, batch_size=16, collate_fn=collate_fn)
+    #test_loader = DataLoader(test_dataset, batch_size=16, collate_fn=collate_fn)
     predictions = trainer.predict(test_loader)
 
     # Exemple d'affichage pour les 5 premières prédictions
@@ -126,14 +126,14 @@ def main():
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     print(f"\033[93mUtilisation de l'appareil : {device}\033[0m")
     #TEMP :
-    train_dataset, val_dataset, test_dataset, tokenizer = load_and_preprocess_csv(csv_path="data/raw/combined_emotion.csv",max_train_samples=5000, max_val_samples=5000, max_test_samples=5000)
+    train_loader, val_loader, test_loader, tokenizer = load_and_preprocess_csv(csv_path="data/raw/combined_emotion.csv",max_train_samples=5000, max_val_samples=5000, max_test_samples=5000)
 
     # 2. DataLoaders
-    train_loader = DataLoader(train_dataset, batch_size=16, shuffle=True, collate_fn=collate_fn)
-    val_loader = DataLoader(val_dataset, batch_size=16, collate_fn=collate_fn)
+    #train_loader = DataLoader(train_dataset, batch_size=16, shuffle=True, collate_fn=collate_fn)
+    #val_loader = DataLoader(val_dataset, batch_size=16, collate_fn=collate_fn)
 
     # 3. Modèle
-    num_labels = train_dataset[0]['labels'].shape[0]  # inférer le nombre de labels
+    num_labels = NUM_LABELS
     vocab_size = tokenizer.vocab_size
     model = BERTForMultiLabelEmotion(vocab_size=vocab_size, num_labels=num_labels)
 
