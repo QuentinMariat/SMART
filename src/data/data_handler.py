@@ -117,6 +117,7 @@ def load_and_preprocess_csv(
     """
     import pandas as pd
     from sklearn.model_selection import train_test_split
+    from torch.utils.data import DataLoader, WeightedRandomSampler
 
     df = pd.read_csv(csv_path)
     # Split
@@ -181,5 +182,25 @@ def load_and_preprocess_csv(
     ds_val.set_format(type='torch')
     ds_test.set_format(type='torch')
 
+    # 8) WeightedRandomSampler pour train
+    # Récupération des labels (N, num_labels)
+    all_labels = torch.stack([ex['labels'] for ex in ds_train], dim=0)
+    pos_freq = all_labels.mean(dim=0)
+    neg_freq = 1.0 - pos_freq
+    pos_weight = neg_freq / pos_freq
+    # Poids par exemple
+    example_weights = (all_labels * pos_weight.unsqueeze(0)).sum(dim=1)
+    sampler = WeightedRandomSampler(
+        weights=example_weights.tolist(),
+        num_samples=len(example_weights),
+        replacement=True
+    )
+
+    # 9) Création des DataLoaders
+    train_loader = DataLoader(ds_train, batch_size=batch_size, sampler=sampler)
+    val_loader   = DataLoader(ds_val,   batch_size=batch_size*4, shuffle=False)
+    test_loader  = DataLoader(ds_test,  batch_size=batch_size*4, shuffle=False)
+
+
     print("CSV data loading and preprocessing complete.")
-    return ds_train, ds_val, ds_test, tokenizer
+    return train_loader, val_loader, test_loader, tokenizer
