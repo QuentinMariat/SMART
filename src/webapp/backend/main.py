@@ -6,6 +6,7 @@ import logging
 from fastapi.responses import JSONResponse
 from fastapi import Request
 import sys
+import os
 
 
 # Configure logging
@@ -21,7 +22,8 @@ app = FastAPI(title="Sentiment API")
 from fastapi.middleware.cors import CORSMiddleware
 import sys
 import os
-from scrapper.youtube import *
+from scrapper.youtube import get_video_id, fetch_comments, getTopComments
+from sentiment_analyzer import analyze_youtube_comments_with_model, classify_text_sentiment
 import csv
 from datetime import datetime
 
@@ -86,12 +88,15 @@ async def generate_analysis(url) -> DetailedAnalysisResponse:
         # Get top comments using YouTube scraper
         result = await getCommentsFromYoutube(url)
         top_comments = result.get("comments", [])
-
+        csv_file_path = result.get("file_path", "")
 
         # Get the video ID to find the correct CSV file
         video_id = get_video_id(url)
-        csv_file_path = f"scrapping/output/youtube_comments_{video_id}.csv"
-
+        
+        if not csv_file_path or not os.path.exists(csv_file_path):
+            logger.warning(f"Le fichier CSV n'a pas été retourné ou n'existe pas, utilisation du chemin par défaut")
+            csv_file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "scrapper", "output", f"youtube_comments_{video_id}.csv")
+        
         nb_top_comments = len(top_comments)
         total_comments = len(top_comments)
         # Check if the file exists and count the rows
@@ -112,42 +117,113 @@ async def generate_analysis(url) -> DetailedAnalysisResponse:
         else:
             logger.warning(f"CSV file not found: {csv_file_path}")
 
-
-
         logger.debug(f"Fetched {total_comments} comments")
 
-        # Dummy sentiment classifier based on keywords
-        def classify_sentiment(text):
-            # Bon là il fait la moyenne des 5 premiers commentaires en comptant les mots, donc là on remplacera par l'IA
-            text = text.lower()
-            if any(word in text for word in ["love", "great", "amazing", "best", "good"]):
-                return "positive"
-            elif any(word in text for word in ["worst", "terrible", "disappointed", "waste", "bad"]):
-                return "negative"
-            else:
-                return "neutral"
-
-        # Convert raw comments into Comment objects
-        comment_objs = []
-        for item in top_comments:
-            sentiment = classify_sentiment(item.get("text", ""))
-            comment_objs.append(
-                Comment(
-                    text=item.get("text", ""),
-                    sentiment=sentiment,
-                    likes=item.get("likes", 0),
-                    time=item.get("time", "00:00")
+        # Utiliser le modèle d'analyse de sentiment pour les commentaires
+        try:
+            sentiment_analysis = analyze_youtube_comments_with_model(csv_file_path)
+            if "error" in sentiment_analysis:
+                logger.warning(f"Erreur lors de l'analyse des sentiments: {sentiment_analysis['error']}")
+                raise ValueError(sentiment_analysis["error"])
+        except Exception as e:
+            logger.warning(f"Exception lors de l'analyse des sentiments, utilisation du fallback: {str(e)}")
+            sentiment_analysis = {"error": str(e)}
+        
+        if "error" in sentiment_analysis:
+            logger.warning(f"Utilisation du classificateur de fallback basé sur des mots-clés")
+            # Fallback vers le classificateur basé sur des mots-clés si le modèle échoue
+                    
+            # Convert raw comments into Comment objects avec le fallback
+            comment_objs = []
+            for item in top_comments:
+                sentiment = classify_text_sentiment(item.get("text", ""))
+                comment_objs.append(
+                    Comment(
+                        text=item.get("text", ""),
+                        sentiment=sentiment,
+                        likes=item.get("likes", 0),
+                        time=item.get("time", "00:00")
+                    )
                 )
-            )
-
-        # Count sentiments
-        sentiment_counts = {"positive": 0, "negative": 0, "neutral": 0}
-        for c in comment_objs:
-            sentiment_counts[c.sentiment] += 1
-
-        positive_ratio = sentiment_counts["positive"] / nb_top_comments if nb_top_comments else 0
-        negative_ratio = sentiment_counts["negative"] / nb_top_comments if nb_top_comments else 0
-        neutral_ratio = sentiment_counts["neutral"] / nb_top_comments if nb_top_comments else 0
+                
+            # Count sentiments
+            sentiment_counts = {"positive": 0, "negative": 0, "neutral": 0}
+            for c in comment_objs:
+                sentiment_counts[c.sentiment] += 1
+                
+            positive_ratio = sentiment_counts["positive"] / nb_top_comments if nb_top_comments else 0
+            negative_ratio = sentiment_counts["negative"] / nb_top_comments if nb_top_comments else 0
+            neutral_ratio = sentiment_counts["neutral"] / nb_top_comments if nb_top_comments else 0
+            
+            logger.info(f"Analyse de sentiment fallback: positive={positive_ratio:.2f}, negative={negative_ratio:.2f}, neutral={neutral_ratio:.2f}")
+        else:
+            # Utiliser les résultats de l'analyse du modèle
+            logger.info(f"Analyse des sentiments réussie: {sentiment_analysis['sentiment_percentages']}")
+            
+            # Convertir les pourcentages en ratios (0-1)
+            positive_ratio = sentiment_analysis['sentiment_percentages']['positive'] / 100
+            negative_ratio = sentiment_analysis['sentiment_percentages']['negative'] / 100
+            neutral_ratio = sentiment_analysis['sentiment_percentages']['neutral'] / 100
+            
+            # Créer les objets de commentaires avec les sentiments prédits
+            comment_objs = []
+            results = sentiment_analysis.get('results', [])
+            
+            # Mapper les résultats avec les top_comments pour conserver les likes et timestamps
+            comment_map = {item.get("text", ""): item for item in top_comments}
+            
+            for result in results[:30]:  # Limiter à 30 commentaires pour l'affichage (augmenté de 10)
+                text = result["text"]
+                emotions = result["emotions"]
+                
+                # Déterminer le sentiment général à partir des émotions
+                sentiment = "neutral"
+                if emotions:
+                    top_emotion = emotions[0][0]  # Émotion la plus probable
+                    # Classifier les émotions en sentiments
+                    positive_emotions = ["joy", "admiration", "amusement", "excitement", "gratitude", "love", "optimism", "pride", "relief"]
+                    negative_emotions = ["anger", "annoyance", "disappointment", "disapproval", "disgust", "embarrassment", "fear", "grief", "remorse", "sadness"]
+                    
+                    if top_emotion in positive_emotions:
+                        sentiment = "positive"
+                    elif top_emotion in negative_emotions:
+                        sentiment = "negative"
+                
+                # Récupérer les likes et timestamps si disponibles dans top_comments
+                item_info = comment_map.get(text, {})
+                
+                comment_objs.append(
+                    Comment(
+                        text=text,
+                        sentiment=sentiment,
+                        likes=item_info.get("likes", 0),
+                        time=item_info.get("time", "00:00")
+                    )
+                )
+            
+            # Si nous n'avons pas assez de commentaires du modèle, ajouter des commentaires des top_comments
+            if len(comment_objs) < 30 and top_comments:
+                logger.info(f"Ajouter {30 - len(comment_objs)} commentaires supplémentaires des top_comments")
+                
+                # Fonction pour convertir les top_comments en objets Comment
+                def comment_to_obj(item):
+                    # Déterminer le sentiment à partir du texte (fallback)
+                    text = item.get("text", "")
+                    sentiment = classify_text_sentiment(text)
+                        
+                    return Comment(
+                        text=text,
+                        sentiment=sentiment,
+                        likes=item.get("likes", 0),
+                        time=item.get("time", "00:00")
+                    )
+                
+                # Convertir jusqu'à 30 - len(comment_objs) commentaires des top_comments
+                for item in top_comments[:30 - len(comment_objs)]:
+                    # Vérifier si ce commentaire n'est pas déjà dans comment_objs
+                    text = item.get("text", "")
+                    if not any(c.text == text for c in comment_objs):
+                        comment_objs.append(comment_to_obj(item))
 
         response = DetailedAnalysisResponse(
             totalComments=total_comments,
@@ -206,12 +282,12 @@ async def getCommentsFromYoutube(url):
         
         # Get video ID and trigger comment scraping
         video_id = get_video_id(url)
-        fetch_comments(url)
+        csv_file_path = fetch_comments(url)
         
         topComments = getTopComments(url)
         logger.debug(f"Top comments fetched for video ID: {video_id}")
         logger.info(f"Top comments: {topComments}")
-        return {"status": "success", "message": "Scraping initiated, results will be saved to CSV", "file_path": "scrapping/output/youtube_comments_" + video_id +".csv", "comments": topComments}
+        return {"status": "success", "message": "Scraping initiated, results will be saved to CSV", "file_path": csv_file_path, "comments": topComments}
     
     except ImportError as e:
         logger.error(f"Failed to import YouTube scraper: {str(e)}")

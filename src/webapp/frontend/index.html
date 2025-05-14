@@ -414,16 +414,45 @@
 
                         <div class="bg-white rounded-lg shadow-sm p-4 mb-6">
                             <h4 class="font-semibold mb-3">
-                                Évolution du Sentiment
+                                Émotions Principales Détectées
                             </h4>
                             <div
-                                id="sentiment-timeline"
-                                class="h-64 bg-gray-50 rounded flex items-center justify-center text-gray-400"
+                                id="emotions-histogram"
+                                class="py-4 bg-white rounded"
                             >
-                                <p>
-                                    Le graphique d'évolution du sentiment
-                                    apparaîtra ici
-                                </p>
+                                <!-- Message d'attente pour l'histogramme -->
+                                <div
+                                    class="flex flex-col items-center justify-center h-64"
+                                >
+                                    <svg
+                                        class="animate-spin h-8 w-8 text-indigo-500 mb-4"
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        fill="none"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <circle
+                                            class="opacity-25"
+                                            cx="12"
+                                            cy="12"
+                                            r="10"
+                                            stroke="currentColor"
+                                            stroke-width="4"
+                                        ></circle>
+                                        <path
+                                            class="opacity-75"
+                                            fill="currentColor"
+                                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                                        ></path>
+                                    </svg>
+                                    <span class="text-sm text-gray-700"
+                                        >En attente des données
+                                        d'émotions...</span
+                                    >
+                                    <span class="text-xs text-gray-500 mt-2"
+                                        >Les résultats apparaîtront ici après
+                                        l'analyse</span
+                                    >
+                                </div>
                             </div>
                         </div>
 
@@ -466,29 +495,27 @@
 
                 <div class="bg-white rounded-xl shadow-md p-6">
                     <h2 class="text-xl font-bold mb-4">
-                        Understanding Sentiment Analyzer
+                        Comment utiliser l'analyseur
                     </h2>
                     <div class="grid md:grid-cols-2 gap-4">
-                        <div class="p-4 rounded-lg sentiment-positive">
-                            <div class="font-bold text-green-700 mb-2">
-                                YouTube Analysis
+                        <div class="p-4 rounded-lg bg-indigo-50">
+                            <div class="font-bold text-indigo-800 mb-2">
+                                1. Collez une URL
                             </div>
                             <p class="text-gray-700">
-                                Analyze viewer comments to understand audience
-                                reception of your videos. Track how sentiment
-                                changes over time and identify key moments that
-                                generated strong reactions.
+                                Saisissez l'URL d'une vidéo YouTube ou d'un post
+                                Twitter/X dont vous souhaitez analyser les
+                                commentaires.
                             </p>
                         </div>
-                        <div class="p-4 rounded-lg sentiment-neutral">
-                            <div class="font-bold text-blue-700 mb-2">
-                                Twitter/X Analysis
+                        <div class="p-4 rounded-lg bg-indigo-50">
+                            <div class="font-bold text-indigo-800 mb-2">
+                                2. Analysez les sentiments
                             </div>
                             <p class="text-gray-700">
-                                Measure public opinion about tweets,
-                                announcements, or topics. See how different
-                                demographics react and identify influential
-                                comments.
+                                Découvrez quelles émotions sont exprimées dans
+                                les commentaires et obtenez des insights
+                                précieux.
                             </p>
                         </div>
                     </div>

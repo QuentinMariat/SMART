@@ -1,91 +1,109 @@
 # src/evaluate.py
 
-import os
 import sys
+import os
 import json
+import numpy as np
 import torch
-from pathlib import Path
 from datasets import Dataset
-from transformers import AutoModelForSequenceClassification, Trainer, TrainingArguments, DataCollatorWithPadding
-from transformers.tokenization_utils_base import PreTrainedTokenizerBase
-
+from transformers import AutoTokenizer, AutoModelForSequenceClassification, Trainer, TrainingArguments, DataCollatorWithPadding
 from src.data.data_handler import load_and_preprocess_data
-from src.evaluation.metrics import compute_metrics
-from src.config.settings import EMOTION_LABELS, NUM_LABELS, PREDICTION_PROB_THRESHOLD
+from sklearn.metrics import accuracy_score, precision_recall_fscore_support
 
-# --- Import et wrapper de ton BPE tokenizer ---
-from src.tokenizer.bpe_tokenizer import BPETokenizer
+try:
+    from src.config.settings import (
+        EMOTION_LABELS,
+        NUM_LABELS,
+        PREDICTION_PROB_THRESHOLD
+    )
+    ALL_LABELS = EMOTION_LABELS
 
-class WrappedBPETokenizer(PreTrainedTokenizerBase):
-    def __init__(self, bpe_tokenizer: BPETokenizer):
-        super().__init__()
-        self.tokenizer = bpe_tokenizer
-        # Définir un pad_token_id unique à la taille du vocab
-        self.pad_token = "<pad>"
-        self.pad_token_id = len(self.tokenizer.vocab)
+except ImportError as e:
+    print(f"Erreur: Impossible d'importer une ou plusieurs variables depuis src.config.settings. Détails: {e}")
+    sys.exit(1)
 
-    def __call__(self, texts, padding=True, truncation=True, max_length=512, **kwargs):
-        if isinstance(texts, str):
-            texts = [texts]
-        # Encodage BPE
-        input_ids = [self.tokenizer.encode(t)[:max_length] for t in texts]
-        # padding manuel
-        if padding:
-            max_len = max(len(ids) for ids in input_ids)
-            input_ids = [ids + [self.pad_token_id] * (max_len - len(ids)) for ids in input_ids]
-        attention_mask = [[1] * len(ids) for ids in input_ids]
-        return {"input_ids": input_ids, "attention_mask": attention_mask}
+OUTPUT_DIR = "./mvp_eval_results"
 
-    def decode(self, token_ids, **kwargs):
-        return self.tokenizer.decode(token_ids)
-
-# Répertoire où on stocke les résultats
-OUTPUT_DIR = "./eval_results"
+def compute_metrics(eval_pred):
+    """
+    Calcule les métriques d'évaluation incluant l'accuracy, la précision, le rappel et le F1-score.
+    """
+    predictions, labels = eval_pred
+    predictions = (predictions > PREDICTION_PROB_THRESHOLD).astype(int)
+    
+    # Calcul de l'accuracy globale
+    accuracy = accuracy_score(labels.flatten(), predictions.flatten())
+    
+    # Calcul des métriques par classe
+    precision, recall, f1, _ = precision_recall_fscore_support(
+        labels.flatten(), 
+        predictions.flatten(), 
+        average='weighted'
+    )
+    
+    return {
+        'accuracy': accuracy,
+        'precision': precision,
+        'recall': recall,
+        'f1': f1
+    }
 
 def main(model_path):
+    """
+    charge le modèle sauvegardé et évalue ses performances sur le dataset de test.
+    """
     print(f"Démarrage de l'évaluation du modèle depuis {model_path}")
-    print(f"Labels ({NUM_LABELS} totaux) : {EMOTION_LABELS}")
-    print(f"Seuil multi-label : {PREDICTION_PROB_THRESHOLD}")
-    print(f"Dossier de sortie : {OUTPUT_DIR}")
+    print(f"Labels d'émotion utilisés ({NUM_LABELS} au total): {ALL_LABELS}")
+    print(f"Seuil de prédiction pour multi-label: {PREDICTION_PROB_THRESHOLD}")
+    print(f"Dossier de sortie des résultats: {OUTPUT_DIR}")
     print("-" * 30)
 
-    # 1) Charger et wrapper ton BPE tokenizer
-    bpe = BPETokenizer(vocab_size=5000)
-    bpe.load("data/tokenizer_files/tokenizer.json")
-    tokenizer = WrappedBPETokenizer(bpe)
-
-    # 2) Charger et prétraiter les données en passant TON tokenizer
+    # chargement des données et du tokenizer en utilisant la fonction existante
+    print("Chargement et prétraitement des données et du tokenizer...")
     try:
-        train_ds, val_ds, test_ds = load_and_preprocess_data(tokenizer=tokenizer)
-        print(f"Données et tokenizer chargés. Nombre d'exemples test : {len(test_ds)}")
+        train_dataset, val_dataset, test_dataset, tokenizer = load_and_preprocess_data()
+        print("Données et tokenizer chargés et prétraités avec succès.")
+        print(f"Nombre d'exemples dans le dataset de test: {len(test_dataset)}")
         print("-" * 30)
+
+        if test_dataset and "labels" in test_dataset[0]:
+             sample_labels = test_dataset[0]["labels"]
+             print(f"Vérification du type des labels dans le dataset de test prétraité: {type(sample_labels)}")
+             if isinstance(sample_labels, torch.Tensor):
+                  print(f"Dtype du tenseur de labels: {sample_labels.dtype}")
+             print("-" * 30)
+
+
     except Exception as e:
-        print(f"Erreur lors du chargement des données : {e}")
+        print(f"Erreur lors du chargement ou du prétraitement des données: {e}")
         sys.exit(1)
 
-    # 3) Charger le modèle fine-tuné
+    # chargement du modèle
     try:
         model = AutoModelForSequenceClassification.from_pretrained(model_path, num_labels=NUM_LABELS)
-        print("Modèle chargé avec succès.")
+        print(f"Modèle chargé avec succès depuis {model_path}")
         print("-" * 30)
     except Exception as e:
-        print(f"Erreur lors du chargement du modèle : {e}")
+        print(f"Erreur lors du chargement du modèle depuis {model_path}: {e}")
         sys.exit(1)
 
-    # 4) Configuration du Trainer pour évaluation
-    eval_args = TrainingArguments(
-        output_dir="./evaluation_output",
+    # arguments du trainer pour l'évaluation
+    evaluation_args = TrainingArguments(
+        output_dir=OUTPUT_DIR,
         per_device_eval_batch_size=64,
     )
 
+    # config du data collector
     data_collator = DataCollatorWithPadding(tokenizer=tokenizer)
     print("Data collator configuré.")
     print("-" * 30)
 
+
+    # init trainer
     trainer = Trainer(
         model=model,
-        args=eval_args,
-        eval_dataset=test_ds,
+        args=evaluation_args,
+        eval_dataset=test_dataset,
         tokenizer=tokenizer,
         data_collator=data_collator,
         compute_metrics=compute_metrics
@@ -93,29 +111,38 @@ def main(model_path):
     print("Trainer initialisé pour l'évaluation.")
     print("-" * 30)
 
-    # 5) Lancer l’évaluation
+
+    # évaluation
     print("Lancement de l'évaluation...")
     try:
-        results = trainer.evaluate()
+        evaluation_results = trainer.evaluate()
         print("Évaluation terminée.")
-        print(results)
+        print("Résultats de l'évaluation:")
+        print(evaluation_results)
         print("-" * 30)
+
     except Exception as e:
-        print(f"Erreur pendant l'évaluation : {e}")
+        print(f"Erreur lors de l'exécution de l'évaluation: {e}")
         sys.exit(1)
 
-    # 6) Sauvegarder les résultats
+
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     results_path = os.path.join(OUTPUT_DIR, "evaluation_results.json")
-    serializable = {k: (v.item() if hasattr(v, "item") else v) for k, v in results.items()}
-    with open(results_path, "w", encoding="utf-8") as f:
-        json.dump(serializable, f, indent=2)
-    print(f"Résultats enregistrés dans {results_path}")
+
+    try:
+        serializable_results = {k: (v.item() if hasattr(v, 'item') else v) for k, v in evaluation_results.items()}
+        with open(results_path, "w") as f:
+            json.dump(serializable_results, f, indent=4)
+        print(f"Résultats de l'évaluation sauvegardés dans {results_path}")
+    except Exception as e:
+        print(f"Erreur lors de la sauvegarde des résultats: {e}")
+
 
 if __name__ == "__main__":
     import argparse
-    parser = argparse.ArgumentParser(description="Évaluer un modèle fine-tuné")
-    parser.add_argument("--model_path", type=str, required=True,
-                        help="Chemin vers le dossier du modèle (e.g., ./results/final_model)")
+    parser = argparse.ArgumentParser(description='Évaluer un modèle fine-tuné.')
+    parser.add_argument('--model_path', type=str, required=True,
+                        help='Chemin vers le répertoire contenant le modèle sauvegardé (e.g., ./results/final_model)')
     args = parser.parse_args()
+
     main(args.model_path)
