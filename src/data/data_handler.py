@@ -118,59 +118,47 @@ def load_from_cache(self):
         return None
 
 def preprocess_wikipedia_mlm(wiki_dataset, model_name="bert-base-uncased", max_length=128, train_ratio=0.8, val_ratio=0.1, load_from_cache=False, cache_dir=None):
-    """
-    Preprocess Wikipedia dataset for BERT MLM pretraining (without masking).
-    
-    Args:
-        wiki_dataset: WikipediaMLMDataset instance.
-        model_name (str): Hugging Face model name for tokenizer (default: bert-base-uncased).
-        max_length (int): Maximum sequence length (default: 512).
-        train_ratio (float): Proportion of data for training (default: 0.8).
-        val_ratio (float): Proportion of data for validation (default: 0.1).
-        cache_dir (str): Directory to save the cached dataset (default: None).
-        load_from_cache (bool): Whether to load from cache (default: False).
-    
-    Returns:
-        tuple: (train_dataset, val_dataset, test_dataset, tokenizer)
-    """
-    # Load tokenizer
-    print(f"Loading tokenizer: {model_name}")
+    from transformers import AutoTokenizer
+    from datasets import Dataset
+    import math
+
     tokenizer = AutoTokenizer.from_pretrained(model_name)
 
-
-    # 1. Charger le dataset si dispo 
     if load_from_cache and cache_dir:
         print(f"Loading dataset from cache at {cache_dir}...")
         tokenized_dataset = Dataset.load_from_disk(cache_dir)
-
     else:
         print("Preprocessing Wikipedia dataset...")
-        texts = list(wiki_dataset)  # Si ce sont des str
+        texts = list(wiki_dataset)
         dataset = Dataset.from_dict({"text": texts})
 
-        def tokenize_batch(batch):
-            return tokenizer(
-                batch["text"],
-                truncation=True,
-                padding="max_length",
-                max_length=max_length
-        )
-        
-        tokenized_dataset = dataset.map(tokenize_batch, batched=True)
+        # Tokenisation sans truncation
+        def tokenize_no_trunc(batch):
+            return tokenizer(batch["text"], return_special_tokens_mask=True)
 
-        # 4. Mettre au format PyTorch directement
-        tokenized_dataset.set_format(type="torch", columns=["input_ids", "attention_mask"])
+        tokenized = dataset.map(tokenize_no_trunc, batched=True, remove_columns=["text"])
 
-        # Gérer la sauvegarde du dataset
-        if not(load_from_cache) and cache_dir:
+        # Découpage en chunks de max_length
+        def group_texts(examples):
+            concatenated = {k: sum(examples[k], []) for k in examples.keys()}
+            total_length = len(concatenated["input_ids"])
+            total_length = (total_length // max_length) * max_length  # tronquer à un multiple de max_length
+            result = {
+                k: [concatenated[k][i:i + max_length] for i in range(0, total_length, max_length)]
+                for k in concatenated.keys()
+            }
+            return result
+
+        tokenized_dataset = tokenized.map(group_texts, batched=True)
+
+        # Conversion PyTorch
+        tokenized_dataset.set_format(type="torch", columns=["input_ids", "attention_mask", "token_type_ids"] if "token_type_ids" in tokenized_dataset.column_names else ["input_ids", "attention_mask"])
+
+        if cache_dir:
             print(f"Saving dataset to cache at {cache_dir}...")
             tokenized_dataset.save_to_disk(cache_dir)
 
-
-    
-    # Split dataset
-    print("Splitting dataset...")
-    # Split dataset
+    # Split
     num_examples = len(tokenized_dataset)
     train_size = int(train_ratio * num_examples)
     val_size = int(val_ratio * num_examples)
@@ -179,6 +167,5 @@ def preprocess_wikipedia_mlm(wiki_dataset, model_name="bert-base-uncased", max_l
     val_dataset = tokenized_dataset.select(range(train_size, train_size + val_size))
     test_dataset = tokenized_dataset.select(range(train_size + val_size, num_examples))
 
-    
     print(f"Preprocessing complete. Train: {len(train_dataset)}, Val: {len(val_dataset)}, Test: {len(test_dataset)}")
     return train_dataset, val_dataset, test_dataset, tokenizer

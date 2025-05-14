@@ -1,6 +1,8 @@
 import torch
 from models.bert.bert_embedding import BERTEmbedding
 from models.bert.attention_layer import EncoderLayer
+from transformers import AutoModel, AutoConfig
+
 
 class BERT(torch.nn.Module):
     def __init__(self, vocab_size, d_model=768, n_layers=12, heads=12, dropout=0.1):
@@ -63,23 +65,39 @@ class MultiLabelEmotionClassifier(torch.nn.Module):
         return probs            # TODO passer à return logits pour BCEWithLogitsLoss
 
 
+
 class BERTForMultiLabelEmotion(torch.nn.Module):
-    """
-    BERT model with a multi-label emotion classification head.
-    """
-    def __init__(self, vocab_size, num_labels,
+    def __init__(self, num_labels, vocab_size=None,
+                 use_pretrained=False, pretrained_model_name=None,
                  d_model=768, n_layers=12, heads=12, dropout=0.1):
         super().__init__()
-        # Core BERT encoder
-        self.bert = BERT(vocab_size, d_model, n_layers, heads, dropout)
-        # Classification head
-        self.classifier = MultiLabelEmotionClassifier(d_model, num_labels, dropout)
 
-    def forward(self, input_ids):
-        # Encode inputs
-        sequence_output = self.bert(input_ids)
-        # Predict multi-label emotions
+        self.use_pretrained = use_pretrained
+
+        if use_pretrained and pretrained_model_name:
+            # Utiliser un modèle Hugging Face
+            self.bert = AutoModel.from_pretrained(pretrained_model_name)
+            hidden_size = self.bert.config.hidden_size
+        else:
+            # Utiliser ton propre modèle BERT
+            assert vocab_size is not None, "vocab_size must be provided if not using pretrained model"
+            self.bert = BERT(vocab_size, d_model, n_layers, heads, dropout)
+            hidden_size = d_model
+
+        # Classification head
+        self.classifier = MultiLabelEmotionClassifier(hidden_size, num_labels, dropout)
+
+    def forward(self, input_ids, attention_mask=None, token_type_ids=None):
+        if self.use_pretrained:
+            outputs = self.bert(input_ids=input_ids,
+                                attention_mask=attention_mask,
+                                token_type_ids=token_type_ids)
+            sequence_output = outputs.last_hidden_state  # (batch, seq_len, hidden)
+        else:
+            sequence_output = self.bert(input_ids, token_type_ids)
+
         return self.classifier(sequence_output)
+
     
 # Example usage:
 # model = BERTForMultiLabelEmotion(vocab_size=30522, num_labels=NUM_LABELS)

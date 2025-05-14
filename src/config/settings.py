@@ -1,7 +1,7 @@
 # modèle pré-entraîné de Hugging Face à utiliser
 # distilbert-base-uncased : plus petit et plus rapide
 # bert-base-uncased : plus grand mais plus performant
-MODEL_NAME = "distilbert-base-uncased"
+MODEL_NAME = "bert-base-uncased"
 # MODEL_NAME = "bert-base-uncased"
 
 DATASET_NAME = "go_emotions"

@@ -58,7 +58,7 @@ def collate_fn(batch):
 
 
 
-def train_model(device, fast_dev=False):
+def train_model(device, fast_dev=False, pretrained_model=None):
     # 1. Charger et prétraiter les données
     if fast_dev:
         # Load tokenizer
@@ -82,7 +82,40 @@ def train_model(device, fast_dev=False):
     # 3. Modèle
     num_labels = train_dataset[0]['labels'].shape[0]  # inférer le nombre de labels
     vocab_size = tokenizer.vocab_size
-    model = BERTForMultiLabelEmotion(vocab_size=vocab_size, num_labels=num_labels)
+    if pretrained_model:
+        print(f'Chargement du modèle pré-entraîné à partir de {pretrained_model}')
+        model = BERTForMultiLabelEmotion(
+            num_labels=num_labels,
+            use_pretrained=True,
+            pretrained_model_name="bert-base-uncased"
+        )
+    else:
+        model = BERTForMultiLabelEmotion(
+            vocab_size=vocab_size,
+            num_labels=num_labels,
+            use_pretrained=False
+        )
+
+
+    # if pretrained_model:
+    #     ckpt = torch.load(pretrained_model, map_location=device)
+
+    #     ckpt_stripped = {}
+    #     for k, v in ckpt.items():
+    #         if k.startswith("bert."):
+    #             new_key = k[len("bert."):]
+    #             ckpt_stripped[new_key] = v
+
+    #     # Charger les poids dans model.bert
+    #     missing_keys, unexpected_keys = model.bert.load_state_dict(ckpt_stripped, strict=False)
+
+    #     print("✅ Poids chargés dans model.bert")
+
+    #     print("Missing keys:", missing_keys)
+    #     print("Unexpected keys:", unexpected_keys)
+
+    model.to(device)
+
 
     # 4. Trainer
     trainer = BERTTrainer(model, train_loader, val_loader, num_labels, device=device)
@@ -102,7 +135,7 @@ def train_model(device, fast_dev=False):
     trainer.evaluate_on_test(test_loader)
 
 def pretrain_model(device, fast_dev=False):
-    wiki_dataset = WikipediaMLMDataset(language="en", version="20231101", num_examples=100000)
+    wiki_dataset = WikipediaMLMDataset(language="en", version="20231101", num_examples=1000)
     train_dataset, val_dataset, test_dataset, tokenizer = preprocess_wikipedia_mlm(wiki_dataset, load_from_cache=False, cache_dir="./cache")
 
     # 2. DataLoaders
@@ -214,14 +247,21 @@ def main():
         choice = input("Choisissez une option : ")
 
         if choice == '1':
-            print("Vitesse entrainement : (1) lent, (2) rapide")
-            speed_choice = input("Choisissez une vitesse : ")
-            if speed_choice == '1':
-                print("Entraînement lent...")
-                train_model(device, fast_dev=False)
-            elif speed_choice == '2':
-                print("Entraînement rapide...")
-                train_model(device, fast_dev=True)
+            print("Choisir un préentrainement ?")
+            print("1. Oui")
+            print("2. Non")
+            pretrain_choice = input("Choisissez une option : ")
+            if pretrain_choice == '1':
+                train_model(device, fast_dev=True, pretrained_model='bert_pretrain.pt')
+            else:
+                print("Vitesse entrainement : (1) lent, (2) rapide")
+                speed_choice = input("Choisissez une vitesse : ")
+                if speed_choice == '1':
+                    print("Entraînement lent...")
+                    train_model(device, fast_dev=False, pretrained_model=True)
+                elif speed_choice == '2':
+                    print("Entraînement rapide...")
+                    train_model(device, fast_dev=True, pretrained_model=True)
         elif choice == '2':
             pretrain_model(device, fast_dev=False)
         elif choice == '3':

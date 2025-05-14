@@ -19,15 +19,26 @@ class BERTTrainer:
         self.thresholds = torch.tensor(list(EMOTION_THRESHOLDS.values()), device=self.device)
 
     def train(self, epochs=3, lr=2e-5, weight_decay=0.01, file_name='bert_multilabel.pt'):
-        optimizer = optim.AdamW(self.model.parameters(), lr=lr, weight_decay=weight_decay)
+        print(self.model)
+        optimizer = optim.AdamW([
+            {"params": self.model.bert.parameters(), "lr": lr},  # e.g. 2e-5
+            {"params": self.model.classifier.parameters(), "lr": 1e-3}
+        ], weight_decay=weight_decay)
         total_steps = len(self.train_loader) * epochs
         scheduler = get_linear_schedule_with_warmup(
         optimizer,
         num_warmup_steps=int(0.1 * total_steps),
         num_training_steps=total_steps)
 
+        for param in self.model.bert.parameters():
+            param.requires_grad = False
+
         for epoch in range(epochs):
           print(f'Epoch {epoch + 1}/{epochs}')
+          if epoch == 1:
+            for param in self.model.bert.parameters():
+                param.requires_grad = True
+
           self.model.train()
           train_loss = 0.0
 
@@ -41,6 +52,7 @@ class BERTTrainer:
 
               optimizer.zero_grad()
               loss.backward()
+
               nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
               optimizer.step()
               scheduler.step()
@@ -56,184 +68,7 @@ class BERTTrainer:
         torch.save(self.model.state_dict(), file_name)
         print(f"✅ Modèle sauvegardé sous '{file_name}'")
     
-    def pretrain(self, tokenizer, epochs=3, lr=2e-5, weight_decay=0.01, file_name='bert_pretrain.pt'):
-        optimizer = optim.AdamW(self.model.parameters(), lr=lr, weight_decay=weight_decay)
-        total_steps = len(self.train_loader) * epochs
-        scheduler = get_linear_schedule_with_warmup(
-            optimizer,
-            num_warmup_steps=int(0.1 * total_steps),
-            num_training_steps=total_steps
-        )
-        criterion = nn.CrossEntropyLoss(ignore_index=-100)
-
-        for epoch in range(epochs):
-            print(f'Epoch {epoch + 1}/{epochs}')
-            self.model.train()
-            train_loss = 0.0
-
-            pbar = tqdm(self.train_loader, desc="Training MLM", leave=False)
-            for batch in pbar:
-                input_ids = batch["input_ids"].to(self.device)
-                token_type_ids = batch.get("token_type_ids")
-
-                inputs_masked, mlm_labels = self._mask_tokens(input_ids.clone(), tokenizer)
-                inputs_masked = inputs_masked.to(self.device)
-                mlm_labels = mlm_labels.to(self.device)
-
-                logits_mlm = self.model(inputs_masked, token_type_ids)
-                loss = criterion(
-                    logits_mlm.view(-1, self.model.vocab_size),
-                    mlm_labels.view(-1)
-                )
-
-                loss.backward()
-                optimizer.step()
-                scheduler.step()
-                optimizer.zero_grad()
-
-                train_loss += loss.item()
-                pbar.set_postfix({'loss': loss.item()})
-
-            avg_train_loss = train_loss / len(self.train_loader)
-            print(f'📊 Train MLM Loss: {avg_train_loss:.4f}')
-
-            # Evaluation à la fin de chaque epoch
-            self.evaluate_pretrain(tokenizer)
-
-        # Sauvegarde finale
-        torch.save(self.model.state_dict(), file_name)
-        print(f"✅ Modèle pré-entraîné sauvegardé sous '{file_name}'")
-
-        # Évaluation finale
-        print("🔚 Évaluation finale après pré-entrainement :")
-        self.evaluate_pretrain(tokenizer)
-
-
-    def evaluate_pretrain(self, tokenizer):
-        self.model.eval()
-        val_loss = 0.0
-        criterion = nn.CrossEntropyLoss(ignore_index=-100)
-
-        all_preds = []
-        all_labels = []
-
-        with torch.no_grad():
-            for batch in tqdm(self.val_loader, desc="Evaluating MLM", leave=False):
-                input_ids = batch["input_ids"].to(self.device)
-                token_type_ids = batch.get("token_type_ids")
-
-                inputs_masked, mlm_labels = self._mask_tokens(input_ids.clone(), tokenizer)
-                inputs_masked = inputs_masked.to(self.device)
-                mlm_labels = mlm_labels.to(self.device)
-
-                logits_mlm = self.model(inputs_masked, token_type_ids)
-                loss = criterion(
-                    logits_mlm.view(-1, self.model.vocab_size),
-                    mlm_labels.view(-1)
-                )
-                val_loss += loss.item()
-
-                # Compute predictions
-                preds = torch.argmax(logits_mlm, dim=-1)
-
-                # Flatten and filter out positions with label -100
-                active_labels = mlm_labels.view(-1) != -100
-                filtered_preds = preds.view(-1)[active_labels]
-                filtered_labels = mlm_labels.view(-1)[active_labels]
-
-                all_preds.extend(filtered_preds.cpu().tolist())
-                all_labels.extend(filtered_labels.cpu().tolist())
-
-        avg_val_loss = val_loss / len(self.val_loader)
-        acc = accuracy_score(all_labels, all_preds)
-        f1 = f1_score(all_labels, all_preds, average="macro")
-        precision = precision_score(all_labels, all_preds, average="macro")
-        recall = recall_score(all_labels, all_preds, average="macro")
-
-        print(f"🔎 Val MLM Loss: {avg_val_loss:.4f}")
-        print(f"📊 Accuracy: {acc:.4f} | Precision: {precision:.4f} | Recall: {recall:.4f} | F1: {f1:.4f}")
-
-
-
-    def evaluate_pretrain_on_test(self, test_loader, tokenizer):
-        self.model.eval()
-        test_loss = 0.0
-        criterion = nn.CrossEntropyLoss(ignore_index=-100)
-
-        all_preds = []
-        all_labels = []
-
-        with torch.no_grad():
-            for batch in tqdm(self.val_loader, desc="Testing MLM", leave=False):
-                input_ids = batch["input_ids"].to(self.device)
-                token_type_ids = batch.get("token_type_ids")
-
-                inputs_masked, mlm_labels = self._mask_tokens(input_ids.clone(), tokenizer)
-                inputs_masked = inputs_masked.to(self.device)
-                mlm_labels = mlm_labels.to(self.device)
-
-                logits_mlm = self.model(inputs_masked, token_type_ids)
-                loss = criterion(
-                    logits_mlm.view(-1, self.model.vocab_size),
-                    mlm_labels.view(-1)
-                )
-                test_loss += loss.item()
-
-                # Compute predictions
-                preds = torch.argmax(logits_mlm, dim=-1)
-
-                # Flatten and filter out positions with label -100
-                active_labels = mlm_labels.view(-1) != -100
-                filtered_preds = preds.view(-1)[active_labels]
-                filtered_labels = mlm_labels.view(-1)[active_labels]
-
-                all_preds.extend(filtered_preds.cpu().tolist())
-                all_labels.extend(filtered_labels.cpu().tolist())
-
-        avg_test_loss = test_loss / len(self.val_loader)
-        acc = accuracy_score(all_labels, all_preds)
-        f1 = f1_score(all_labels, all_preds, average="macro", zero_division=0)
-        precision = precision_score(all_labels, all_preds, average="macro", zero_division=0)
-        recall = recall_score(all_labels, all_preds, average="macro", zero_division=0)
-
-
-        print("\n📝 Exemples de reconstruction MLM :")
-        for i in range(min(5, input_ids.size(0))):
-            original_tokens = tokenizer.convert_ids_to_tokens(input_ids[i].tolist())
-            masked_tokens = tokenizer.convert_ids_to_tokens(inputs_masked[i].tolist())
-            predicted_tokens = tokenizer.convert_ids_to_tokens(torch.argmax(logits_mlm[i], dim=-1).tolist())
-
-            print(f"\n🔹 Sample {i+1}:")
-            print("Original : ", " ".join(original_tokens))
-            print("Masqué   : ", " ".join(masked_tokens))
-            print("Prédit   : ", " ".join(predicted_tokens))
-
-
-        print(f"🧪 Test MLM Loss: {avg_test_loss:.4f}")
-        print(f"📊 Accuracy: {acc:.4f} | Precision: {precision:.4f} | Recall: {recall:.4f} | F1: {f1:.4f}")
-
-    def predict_pretrain(self, test_loader, tokenizer):
-        self.model.eval()
-        predictions = []
-        targets = []
-
-        with torch.no_grad():
-            for batch in tqdm(test_loader, desc="Predicting MLM", leave=False):
-                input_ids = batch["input_ids"].to(self.device)
-                token_type_ids = batch.get("token_type_ids")
-
-                inputs_masked, mlm_labels = self._mask_tokens(input_ids.clone(), tokenizer)
-                inputs_masked = inputs_masked.to(self.device)
-                mlm_labels = mlm_labels.to(self.device)
-
-                logits_mlm = self.model(inputs_masked, token_type_ids)
-                preds = torch.argmax(logits_mlm, dim=-1)
-
-                predictions.extend(preds.cpu().tolist())
-                targets.extend(mlm_labels.cpu().tolist())
-
-        return predictions, targets  # Pour inspection ou analyse plus poussée
-
+    
 
 
     def evaluate(self):
@@ -305,6 +140,193 @@ class BERTTrainer:
       self.model.load_state_dict(torch.load(path, map_location=self.device))
       self.model.to(self.device)
       print(f"✅ Modèle chargé depuis '{path}'")
+
+
+    def pretrain(self, tokenizer, epochs=3, lr=2e-5, weight_decay=0.01, file_name='bert_pretrain.pt'):
+        optimizer = optim.AdamW(self.model.parameters(), lr=lr, weight_decay=weight_decay)
+        total_steps = len(self.train_loader) * epochs
+        scheduler = get_linear_schedule_with_warmup(
+            optimizer,
+            num_warmup_steps=int(0.1 * total_steps),
+            num_training_steps=total_steps
+        )
+        criterion = nn.CrossEntropyLoss(ignore_index=-100)
+
+        for epoch in range(epochs):
+            print(f'Epoch {epoch + 1}/{epochs}')
+            self.model.train()
+            train_loss = 0.0
+
+            pbar = tqdm(self.train_loader, desc="Training MLM", leave=False)
+            for batch in pbar:
+                input_ids = batch["input_ids"].to(self.device)
+                token_type_ids = batch.get("token_type_ids").to(self.device)
+
+                inputs_masked, mlm_labels = self._mask_tokens(input_ids.clone(), tokenizer)
+                inputs_masked = inputs_masked.to(self.device)
+                mlm_labels = mlm_labels.to(self.device)
+
+
+                logits_mlm = self.model(inputs_masked, token_type_ids)
+                loss = criterion(
+                    logits_mlm.view(-1, self.model.vocab_size),
+                    mlm_labels.view(-1)
+                )
+
+                loss.backward()
+                optimizer.step()
+                scheduler.step()
+                optimizer.zero_grad()
+
+                train_loss += loss.item()
+                pbar.set_postfix({'loss': loss.item()})
+
+            avg_train_loss = train_loss / len(self.train_loader)
+            print(f'📊 Train MLM Loss: {avg_train_loss:.4f}')
+
+            # Evaluation à la fin de chaque epoch
+            self.evaluate_pretrain(tokenizer)
+
+        # Sauvegarde finale
+        torch.save(self.model.state_dict(), file_name)
+        print(f"✅ Modèle pré-entraîné sauvegardé sous '{file_name}'")
+
+        # Évaluation finale
+        print("🔚 Évaluation finale après pré-entrainement :")
+        self.evaluate_pretrain(tokenizer)
+
+
+    def evaluate_pretrain(self, tokenizer):
+        self.model.eval()
+        val_loss = 0.0
+        criterion = nn.CrossEntropyLoss(ignore_index=-100)
+
+        all_preds = []
+        all_labels = []
+
+        with torch.no_grad():
+            for batch in tqdm(self.val_loader, desc="Evaluating MLM", leave=False):
+                input_ids = batch["input_ids"].to(self.device)
+                token_type_ids = batch.get("token_type_ids").to(self.device)
+
+                inputs_masked, mlm_labels = self._mask_tokens(input_ids.clone(), tokenizer)
+                inputs_masked = inputs_masked.to(self.device)
+                mlm_labels = mlm_labels.to(self.device)
+
+                logits_mlm = self.model(inputs_masked, token_type_ids)
+
+                # Calcul de la loss
+                loss = criterion(
+                    logits_mlm.view(-1, logits_mlm.size(-1)),
+                    mlm_labels.view(-1)
+                )
+                val_loss += loss.item()
+
+                # --- Extraction des positions à évaluer ---
+                masked_pos = (mlm_labels != -100)  # (batch, seq_len)
+                logits_masked = logits_mlm[masked_pos]        # (N, vocab_size)
+                labels_masked = mlm_labels[masked_pos]        # (N,)
+                preds = torch.argmax(logits_masked, dim=-1)   # (N,)
+
+                # --- Debug / affichage ---
+                decoded_preds = tokenizer.batch_decode(preds)
+                decoded_labels = tokenizer.batch_decode(labels_masked)
+
+
+                all_preds.extend(preds.cpu().tolist())
+                all_labels.extend(labels_masked.cpu().tolist())
+
+        avg_val_loss = val_loss / len(self.val_loader)
+        acc = accuracy_score(all_labels, all_preds)
+        f1 = f1_score(all_labels, all_preds, average="macro")
+        precision = precision_score(all_labels, all_preds, average="macro")
+        recall = recall_score(all_labels, all_preds, average="macro")
+
+        print(f"🔎 Val MLM Loss: {avg_val_loss:.4f}")
+        print(f"📊 Accuracy: {acc:.4f} | Precision: {precision:.4f} | Recall: {recall:.4f} | F1: {f1:.4f}")
+
+
+
+
+    def evaluate_pretrain_on_test(self, test_loader, tokenizer):
+        self.model.eval()
+        test_loss = 0.0
+        criterion = nn.CrossEntropyLoss(ignore_index=-100)
+
+        all_preds = []
+        all_labels = []
+
+        with torch.no_grad():
+            for batch in tqdm(self.val_loader, desc="Testing MLM", leave=False):
+                input_ids = batch["input_ids"].to(self.device)
+                token_type_ids = batch.get("token_type_ids").to(self.device)
+
+                inputs_masked, mlm_labels = self._mask_tokens(input_ids.clone(), tokenizer)
+                inputs_masked = inputs_masked.to(self.device)
+                mlm_labels = mlm_labels.to(self.device)
+
+                logits_mlm = self.model(inputs_masked, token_type_ids)
+                loss = criterion(
+                    logits_mlm.view(-1, self.model.vocab_size),
+                    mlm_labels.view(-1)
+                )
+                test_loss += loss.item()
+
+                # Compute predictions
+                preds = torch.argmax(logits_mlm, dim=-1)
+
+                # Flatten and filter out positions with label -100
+                active_labels = mlm_labels.view(-1) != -100
+                filtered_preds = preds.view(-1)[active_labels]
+                filtered_labels = mlm_labels.view(-1)[active_labels]
+
+                all_preds.extend(filtered_preds.cpu().tolist())
+                all_labels.extend(filtered_labels.cpu().tolist())
+
+        avg_test_loss = test_loss / len(self.val_loader)
+        acc = accuracy_score(all_labels, all_preds)
+        f1 = f1_score(all_labels, all_preds, average="macro", zero_division=0)
+        precision = precision_score(all_labels, all_preds, average="macro", zero_division=0)
+        recall = recall_score(all_labels, all_preds, average="macro", zero_division=0)
+
+
+        print("\n📝 Exemples de reconstruction MLM :")
+        for i in range(min(5, input_ids.size(0))):
+            original_tokens = tokenizer.convert_ids_to_tokens(input_ids[i].tolist())
+            masked_tokens = tokenizer.convert_ids_to_tokens(inputs_masked[i].tolist())
+            predicted_tokens = tokenizer.convert_ids_to_tokens(torch.argmax(logits_mlm[i], dim=-1).tolist())
+
+            print(f"\n🔹 Sample {i+1}:")
+            print("Original : ", " ".join(original_tokens))
+            print("Masqué   : ", " ".join(masked_tokens))
+            print("Prédit   : ", " ".join(predicted_tokens))
+
+
+        print(f"🧪 Test MLM Loss: {avg_test_loss:.4f}")
+        print(f"📊 Accuracy: {acc:.4f} | Precision: {precision:.4f} | Recall: {recall:.4f} | F1: {f1:.4f}")
+
+    def predict_pretrain(self, test_loader, tokenizer):
+        self.model.eval()
+        predictions = []
+        targets = []
+
+        with torch.no_grad():
+            for batch in tqdm(test_loader, desc="Predicting MLM", leave=False):
+                input_ids = batch["input_ids"].to(self.device)
+                token_type_ids = batch.get("token_type_ids")
+
+                inputs_masked, mlm_labels = self._mask_tokens(input_ids.clone(), tokenizer)
+                inputs_masked = inputs_masked.to(self.device)
+                mlm_labels = mlm_labels.to(self.device)
+
+                logits_mlm = self.model(inputs_masked, token_type_ids)
+                preds = torch.argmax(logits_mlm, dim=-1)
+
+                predictions.extend(preds.cpu().tolist())
+                targets.extend(mlm_labels.cpu().tolist())
+
+        return predictions, targets  # Pour inspection ou analyse plus poussée
+
 
 
     def _mask_tokens(self, inputs, tokenizer, mlm_probability=0.15):
