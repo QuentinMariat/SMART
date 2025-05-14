@@ -1,4 +1,4 @@
-# src/predict.py
+# src/mvp/predict.py
 
 import torch
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
@@ -7,7 +7,12 @@ import json
 import sys
 import numpy as np
 
-from src.config.settings import TRAINING_ARGS, ID2LABEL, PREDICTION_PROB_THRESHOLD, BASE_MODEL_NAME
+try:
+    from src.config.settings import TRAINING_ARGS, ID2LABEL, PREDICTION_PROB_THRESHOLD, BASE_MODEL_NAME
+except ImportError:
+    # Fallback pour les imports relatifs dans le contexte du backend
+    sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+    from src.config.settings import TRAINING_ARGS, ID2LABEL, PREDICTION_PROB_THRESHOLD, BASE_MODEL_NAME
 
 def predict_emotion(text: str, model, tokenizer, id2label: dict, threshold: float):
     """

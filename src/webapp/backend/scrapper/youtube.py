@@ -5,10 +5,7 @@ import os
 import csv
 import logging
 import sys
-from dotenv import load_dotenv
-
-# Charger les variables d'environnement depuis le fichier .env
-load_dotenv()
+import re
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(
@@ -35,14 +32,30 @@ def get_video_id(url):
 
     return None
 
+# Fonction pour nettoyer le texte des commentaires
+def clean_comment_text(text):
+    # Remplacer les retours à la ligne par des espaces
+    text = re.sub(r'\n+', ' ', text)
+    # Supprimer les caractères spéciaux qui pourraient causer des problèmes dans le CSV
+    text = re.sub(r'[\r\t]', ' ', text)
+    # Remplacer les séquences multiples d'espaces par un seul espace
+    text = re.sub(r'\s+', ' ', text)
+    return text.strip()
+
 
 VIDEO_URL = 'https://www.youtube.com/watch?v=0uzCUZeBi6c'
 API_URL = 'https://www.googleapis.com/youtube/v3/commentThreads'
 
-# Récupérer la clé API YouTube depuis les variables d'environnement
-API_KEY = os.getenv("YOUTUBE_API_KEY")
+# Récupérer l'API key depuis les variables d'environnement (si python-dotenv est installé)
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+    API_KEY = os.getenv("YOUTUBE_API_KEY")
+except ImportError:
+    API_KEY = os.environ.get("YOUTUBE_API_KEY")
+    
 if not API_KEY:
-    logger.warning("YOUTUBE_API_KEY non trouvée dans le fichier .env")
+    logger.warning("YOUTUBE_API_KEY non trouvée dans les variables d'environnement")
     API_KEY = input("Veuillez entrer votre clé API YouTube: ")
 
 
@@ -74,48 +87,35 @@ def fetch_comments(video_url):
             raise ValueError(f"L'API YouTube n'a pas retourné de commentaires. Peut-être un problème avec l'ID vidéo ou la clé API ?")
         
         for item in data['items']:
-            comment = item['snippet']['topLevelComment']['snippet']['textDisplay']
-            COMMENTS.append(comment)
+            comment_text = item['snippet']['topLevelComment']['snippet']['textDisplay']
+            # Nettoyer le texte du commentaire
+            clean_text = clean_comment_text(comment_text)
+            COMMENTS.append(clean_text)
 
         if 'nextPageToken' in data:
             params['pageToken'] = data['nextPageToken']
         else:
             break
 
-    #display the comments
     # Create a directory for the output if it doesn't exist
     output_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "output")
     os.makedirs(output_dir, exist_ok=True)
 
     # Create the CSV file path using the video ID for uniqueness
     csv_file_path = os.path.join(output_dir, f"youtube_comments_{VIDEO_ID}.csv")
-
-    # Write comments to CSV file
-    # Check if file exists
-    file_exists = os.path.isfile(csv_file_path)
-
-    with open(csv_file_path, 'a', newline='', encoding='utf-8') as file:
-        writer = csv.writer(file)
+    
+    # Write comments to CSV file in a format compatible with predict.py
+    with open(csv_file_path, 'w', newline='', encoding='utf-8') as file:
+        writer = csv.writer(file, quoting=csv.QUOTE_ALL)  # Use QUOTE_ALL pour s'assurer que tout est bien échappé
+        writer.writerow(['comment_id', 'text'])  # En-tête CSV
         
-        # Write header only if file is being created
-        if not file_exists:
-            writer.writerow(['Comment Number', 'Comment Text'])  # Header row
-        
-        # Get the current comment count if file exists
-        if file_exists:
-            with open(csv_file_path, 'r', encoding='utf-8') as read_file:
-                comment_count = sum(1 for _ in read_file) - 1  # Subtract 1 for header
-        else:
-            comment_count = 0
-        
-        # Add new comments with continuing numbering
-        for i, comment in enumerate(COMMENTS, start=comment_count+1):
+        for i, comment in enumerate(COMMENTS):
             writer.writerow([i, comment])
 
-    logger.info(f"[YoutubeScrapper] Total new comments added: {len(COMMENTS)}")
+    logger.info(f"[YoutubeScrapper] Total comments saved: {len(COMMENTS)}")
     logger.info(f"[YoutubeScrapper] Comments saved to: {csv_file_path}")
-
-#fetch_comments(VIDEO_URL)
+    
+    return csv_file_path
 
 def getTopComments(url):
     VIDEO_ID = get_video_id(url)
@@ -139,21 +139,13 @@ def getTopComments(url):
 
     for item in data["items"]:
         snippet = item["snippet"]["topLevelComment"]["snippet"]
+        comment_text = clean_comment_text(snippet["textDisplay"])
         COMMENTS.append({
-            "text": snippet["textDisplay"],
-            "likeCount": snippet["likeCount"],
-            "publishedAt": snippet["publishedAt"]
+            "text": comment_text,
+            "likes": snippet["likeCount"],
+            "time": snippet["publishedAt"]
         })
     
-    top_comments = sorted(COMMENTS, key=lambda x: x["likeCount"], reverse=True)[:5]
-
-    for i, comment in enumerate(top_comments, 1):
-        print("[YoutubeScrapper]")
-        print(f"\nCommentaire #{i}")
-        print(f"Likes : {comment['likeCount']}")
-        print(f"Date : {comment['publishedAt']}")
-        print(f"Texte : {comment['text']}")
+    top_comments = sorted(COMMENTS, key=lambda x: x["likes"], reverse=True)[:10]
 
     return top_comments
-
-#getTopComments(VIDEO_URL)
