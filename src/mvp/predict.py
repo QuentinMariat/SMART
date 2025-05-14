@@ -6,51 +6,118 @@ import os
 import json
 import sys
 import numpy as np
+import re
 
 try:
     from src.config.settings import TRAINING_ARGS, ID2LABEL, PREDICTION_PROB_THRESHOLD, BASE_MODEL_NAME
 except ImportError:
     # Fallback pour les imports relatifs dans le contexte du backend
-    sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    project_root = os.path.abspath(os.path.join(current_dir, '../../'))
+    sys.path.append(project_root)
     from src.config.settings import TRAINING_ARGS, ID2LABEL, PREDICTION_PROB_THRESHOLD, BASE_MODEL_NAME
+
+def detect_gratitude_patterns(text):
+    """
+    Détecte les patterns implicites de gratitude et autres expressions positives.
+    
+    Args:
+        text (str): Le texte à analyser
+        
+    Returns:
+        bool: True si un pattern est détecté, False sinon
+    """
+    text = text.lower()
+    
+    # Patterns explicites de gratitude
+    gratitude_patterns = [
+        r"thank(s|\syou)", r"helped( me)?", r"(was|very) helpful",
+        r"save[sd]( me| my)?", r"(great|good) job", r"well done",
+        r"love (this|it|how|the way)", r"appreciate", r"grateful",
+        r"(this|that) help(s|ed)", r"(this|that) (is|was) (great|good|helpful|useful)"
+    ]
+    
+    for pattern in gratitude_patterns:
+        if re.search(pattern, text):
+            return True
+            
+    # Détection du contexte "help with exam/study"
+    study_patterns = [
+        r"(help(ed)?|assist(ed)?) (me )?(with )?(my )?(exam|study|test|homework)",
+        r"exam.{1,15}help", r"study.{1,15}help",
+        r"(got|received|needed) help",
+        r"help.{1,15}(study|exam|test)",
+        r"thanks to (this|you|him|her|them)"
+    ]
+    
+    for pattern in study_patterns:
+        if re.search(pattern, text):
+            return True
+            
+    return False
 
 def predict_emotion(text: str, model, tokenizer, id2label: dict, threshold: float):
     """
-    Prédit les émotions pour un texte donné en utilisant le modèle chargé.
+    Prédit l'émotion dominante pour un texte donné en utilisant le modèle chargé.
+    
+    Args:
+        text (str): Le texte à analyser
+        model: Le modèle de classification d'émotions
+        tokenizer: Le tokenizer correspondant au modèle
+        id2label (dict): Dictionnaire de correspondance ID -> label d'émotion
+        threshold (float): Seuil de prédiction - toute émotion avec une probabilité supérieure sera considérée
+    
+    Returns:
+        str: L'étiquette de l'émotion la plus probable qui dépasse le seuil, 
+             ou "neutral" si aucune émotion ne dépasse le seuil
     """
-    # tokenization : utiliser les mêmes paramètres de padding et truncation que pendant l'entraînement
+    # Vérifier d'abord les patterns implicites de gratitude
+    if detect_gratitude_patterns(text):
+        # Si un pattern de gratitude est détecté, retourner une émotion positive
+        # comme "gratitude" si disponible dans id2label, sinon "joy"
+        for emotion_id, emotion in id2label.items():
+            if emotion == "gratitude":
+                return "gratitude"
+        return "joy"  # Fallback si gratitude n'est pas disponible
+    
+    # Tokenization : utiliser les mêmes paramètres de padding et truncation que pendant l'entraînement
     inputs = tokenizer(text, return_tensors="pt", truncation=True, padding=True)
 
-    # envoyer les entrées sur le même appareil que le modèle 
+    # Envoyer les entrées sur le même appareil que le modèle 
     device = torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
     inputs = {k: v.to(device) for k, v in inputs.items()}
     model.to(device)
 
-    # forward pass
+    # Forward pass
     with torch.no_grad():
         outputs = model(**inputs)
 
-    # obtenir les logits et les convertir en proba
+    # Obtenir les logits et les convertir en probabilités
     logits = outputs.logits
-    probabilities = torch.sigmoid(logits) 
+    probabilities = torch.sigmoid(logits[0])  # Prendre le premier élément du batch
 
-    # appliquer le seuil pour obtenir prédictions binaires
-    predicted_emotions_with_probs = []
-    for i, prob in enumerate(probabilities[0]):
-        if prob.item() > threshold:
-            predicted_emotions_with_probs.append((id2label[i], prob.item()))
-
-    # triez par proba décroissante
-    predicted_emotions_with_probs.sort(key=lambda item: item[1], reverse=True)
-
-
-    return predicted_emotions_with_probs
+    # Trouver l'émotion avec la plus haute probabilité
+    max_prob_idx = torch.argmax(probabilities).item()
+    max_prob = probabilities[max_prob_idx].item()
+    max_emotion = id2label[max_prob_idx]
+    
+    # Si la probabilité maximale dépasse le seuil, retourner cette émotion
+    if max_prob > threshold:
+        return max_emotion
+    else:
+        # Si aucune émotion ne dépasse le seuil, retourner "neutral"
+        return "neutral"
 
 if __name__ == "__main__":
-    model_path = f"{TRAINING_ARGS['output_dir']}/final_model"
-
+    # Obtenir le chemin racine du projet pour les chemins absolus
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    project_root = os.path.abspath(os.path.join(current_dir, '../../'))
+    
+    # Chemin direct vers le modèle
+    model_path = os.path.join(project_root, 'results/mvp_model')
+    
     if not os.path.exists(model_path):
-        print(f"Erreur: Le dossier du modèle '{model_path}' n'existe pas.")
+        print(f"Erreur: Le modèle n'existe pas à l'emplacement: {model_path}")
         print("Veuillez d'abord exécuter le script d'entraînement pour sauvegarder le modèle.")
         sys.exit(1)
 
@@ -58,14 +125,13 @@ if __name__ == "__main__":
 
     try:
         tokenizer = AutoTokenizer.from_pretrained(model_path)
-
         model = AutoModelForSequenceClassification.from_pretrained(model_path)
 
         print("Modèle et tokenizer chargés avec succès.")
         print(f"Seuil de prédiction utilisé: {PREDICTION_PROB_THRESHOLD}")
         print("-" * 30)
 
-        print("Entrez un texte pour prédire les émotions. Tapez 'quitter' pour sortir.")
+        print("Entrez un texte pour prédire l'émotion dominante. Tapez 'quitter' pour sortir.")
         while True:
             user_input = input("Votre texte: ")
             if user_input.lower() == 'quitter':
@@ -75,14 +141,14 @@ if __name__ == "__main__":
                 print("Veuillez entrer un texte non vide.")
                 continue
 
-            predicted_emotions = predict_emotion(user_input, model, tokenizer, ID2LABEL, PREDICTION_PROB_THRESHOLD)
+            # Prédire l'émotion dominante
+            predicted_emotion = predict_emotion(user_input, model, tokenizer, ID2LABEL, PREDICTION_PROB_THRESHOLD)
 
-            if predicted_emotions:
-                print("Émotions prédites (nom, probabilité):")
-                for emotion, prob in predicted_emotions:
-                    print(f"- {emotion}: {prob:.4f}")
+            # Afficher le résultat
+            if predicted_emotion != "neutral":
+                print(f"Émotion prédite: {predicted_emotion}")
             else:
-                print("Aucune émotion prédite au seuil spécifié.")
+                print("Aucune émotion prédite avec confiance suffisante (résultat: neutral)")
             print("-" * 30)
 
     except Exception as e:
