@@ -15,6 +15,8 @@ from torch.nn.utils.rnn import pad_sequence
 
 bpe = BPETokenizer()
 bpe.load("data/tokenizer_files/tokenizer.json")
+print("📚 Taille du vocabulaire BPE :", bpe.vocab_size)
+print("🔢 Taille réelle du vocabulaire :", len(bpe.vocab))
 
 # Simple modèle pour classification multilabel
 class SimpleClassifier(torch.nn.Module):
@@ -58,7 +60,7 @@ def train_model(device, fast_dev=False):
 
     # 3. Modèle
     num_labels = train_dataset[0]['labels'].shape[0]  # inférer le nombre de labels
-    vocab_size = tokenizer.vocab_size
+    vocab_size = len(tokenizer.vocab)
     model = BERTForMultiLabelEmotion(vocab_size=vocab_size, num_labels=num_labels)
 
     # 4. Trainer
