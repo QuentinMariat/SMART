@@ -32,13 +32,13 @@ class BERTEmbedding(torch.nn.Module):
     3. Segment Embedding (optional, default to 0)
     Sum of the above + dropout
     """
-    def __init__(self, vocab_size, embed_size, seq_len=128, dropout=0.1, type_vocab_size=2):
+    def __init__(self, vocab_size, embed_size, seq_len=128, dropout=0.1, type_vocab_size=3):
         """
         :param vocab_size: total vocab size
         :param embed_size: embedding size for tokens, positions, and segments
         :param seq_len: max length of input sequences
         :param dropout: dropout rate
-        :param type_vocab_size: number of segment types (typically 2)
+        :param type_vocab_size: number of segment types (default 3 for compatibility)
         """
         super().__init__()
         self.embed_size = embed_size

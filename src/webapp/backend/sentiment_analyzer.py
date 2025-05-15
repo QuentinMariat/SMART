@@ -31,6 +31,8 @@ except ImportError as e:
 # Variables globales pour stocker le modèle et le tokenizer Stella
 stella_model = None
 stella_tokenizer = None
+stella_model_untrained = None
+bert_tokenizer = None  # Nouveau tokenizer pour BERT
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 def initialize_stella_model():
@@ -38,39 +40,68 @@ def initialize_stella_model():
     Initialise et charge le modèle Stella et son tokenizer.
     Cette fonction doit être appelée au démarrage du serveur.
     """
-    global stella_model, stella_tokenizer
+    global stella_model, stella_tokenizer, stella_model_untrained, bert_tokenizer
     
     try:
-        model_path = os.path.join(project_root, 'results/stella_model/bert_multilabel.pt')
-        if not os.path.exists(model_path):
-            logger.error(f"Le modèle Stella n'existe pas à l'emplacement: {model_path}")
+        #Dont remove this
+        model_path = os.path.join(project_root, 'results/stella_model/stella_bert_pretrain.pt') 
+        model_path_untrained = os.path.join(project_root, 'results/stella_model/stella_bert_untrained.pt')
+        
+        if not os.path.exists(model_path) or not os.path.exists(model_path_untrained):
+            logger.error(f"Un des modèles Stella n'existe pas aux emplacements spécifiés")
             return False
 
-        # Charger le tokenizer
+        # 1. Charger le modèle pré-entraîné avec RoBERTa
+        logger.info("Chargement du modèle pré-entraîné RoBERTa...")
         stella_tokenizer = AutoTokenizer.from_pretrained('roberta-base')
         vocab_size = stella_tokenizer.vocab_size
-        logger.info(f"Taille du vocabulaire: {vocab_size}")
+        logger.info(f"Taille du vocabulaire RoBERTa: {vocab_size}")
 
-        # Initialiser le modèle
+        # Configuration spécifique pour RoBERTa (qui utilise 1 type de segment)
         stella_model = BERTForMultiLabelEmotion(
             num_labels=len(EMOTION_LABELS),
             vocab_size=vocab_size,
             use_pretrained=True,
-            pretrained_model_name='roberta-base'
+            pretrained_model_name='roberta-base',
+            type_vocab_size=1  # RoBERTa utilise 1 type de segment
         )
         
-        # Charger les poids du modèle
-        stella_model.load_state_dict(torch.load(model_path, map_location=device))
+        # Charger les poids du modèle pré-entraîné
+        state_dict = torch.load(model_path, map_location=device)
+        # Utiliser ignore_mismatched_sizes=True pour gérer la différence de taille des embeddings
+        stella_model.load_state_dict(state_dict, strict=False)
         stella_model.to(device)
         stella_model.eval()
+        logger.info("✅ Modèle Stella RoBERTa pré-entraîné chargé avec succès")
+
+        # 2. Charger le modèle non pré-entraîné avec BERT
+        logger.info("Chargement du modèle BERT non pré-entraîné...")
+        bert_tokenizer = AutoTokenizer.from_pretrained('bert-base-uncased')  # Stocker le tokenizer BERT
+        bert_vocab_size = bert_tokenizer.vocab_size
+
+        # Configuration spécifique pour BERT non pré-entraîné (qui utilise 3 types de segments)
+        stella_model_untrained = BERTForMultiLabelEmotion(
+            num_labels=len(EMOTION_LABELS),
+            vocab_size=bert_vocab_size,
+            use_pretrained=False,  # Important : pas de pré-entraînement
+            type_vocab_size=3  # BERT utilise 3 types de segments
+        )
         
-        logger.info("✅ Modèle Stella chargé avec succès")
+        # Charger les poids dans le modèle non pré-entraîné
+        state_dict_untrained = torch.load(model_path_untrained, map_location=device)
+        stella_model_untrained.load_state_dict(state_dict_untrained, strict=False)
+        stella_model_untrained.to(device)
+        stella_model_untrained.eval()
+        logger.info("✅ Modèle Stella BERT non pré-entraîné chargé avec succès")
+        
         return True
         
     except Exception as e:
         logger.error(f"❌ Erreur lors de l'initialisation du modèle Stella: {str(e)}")
         stella_model = None
         stella_tokenizer = None
+        stella_model_untrained = None
+        bert_tokenizer = None
         return False
 
 def predict_emotion_stella(text, device='cuda' if torch.cuda.is_available() else 'cpu'):
@@ -102,6 +133,38 @@ def predict_emotion_stella(text, device='cuda' if torch.cuda.is_available() else
             
     return max_prob_idx
 
+def predict_emotion_stella_untrained(text, device='cuda' if torch.cuda.is_available() else 'cpu'):
+    """
+    Prédit les émotions pour un texte donné en utilisant le modèle Stella non pré-entraîné.
+    """
+    global stella_model_untrained, bert_tokenizer
+    
+    if stella_model_untrained is None or bert_tokenizer is None:
+        raise RuntimeError("Le modèle Stella non pré-entraîné ou son tokenizer n'est pas initialisé")
+
+    try:
+        # Tokenisation avec le tokenizer BERT
+        inputs = bert_tokenizer(
+            text,
+            padding='max_length',
+            truncation=True,
+            max_length=128,
+            return_tensors='pt'
+        )
+
+        input_ids = inputs['input_ids'].to(device)
+        attention_mask = inputs['attention_mask'].to(device)
+
+        with torch.no_grad():
+            outputs = stella_model_untrained(input_ids, attention_mask=attention_mask)
+            # Trouver l'indice de l'émotion avec la plus haute probabilité
+            max_prob_idx = torch.argmax(outputs, dim=1).item()
+                
+        return max_prob_idx
+    except Exception as e:
+        logger.error(f"Erreur lors de la prédiction avec le modèle non pré-entraîné: {str(e)}")
+        raise
+
 def analyze_youtube_comments_with_model(comments_file, model_name="mvp"):
     """
     Analyse les commentaires YouTube avec le modèle de prédiction d'émotions
@@ -109,16 +172,19 @@ def analyze_youtube_comments_with_model(comments_file, model_name="mvp"):
     
     Args:
         comments_file (str): Chemin vers le fichier CSV contenant les commentaires
-        model_name (str): Nom du modèle à utiliser ("mvp" ou "stella")
+        model_name (str): Nom du modèle à utiliser ("mvp", "stella" ou "stella_untrained")
         
     Returns:
         dict: Statistiques d'analyse et chemin vers le nouveau fichier CSV généré
     """
     try:
-        # Pour le modèle Stella, vérifier qu'il est bien initialisé
+        # Pour les modèles Stella, vérifier qu'ils sont bien initialisés
         if model_name == "stella":
             if stella_model is None or stella_tokenizer is None:
                 return {"error": "Le modèle Stella n'est pas initialisé"}
+        elif model_name == "stella_untrained":
+            if stella_model_untrained is None:
+                return {"error": "Le modèle Stella non pré-entraîné n'est pas initialisé"}
         else:
             # Charger le modèle MVP
             model_path = os.path.join(project_root, 'results/mvp_model')
@@ -196,6 +262,9 @@ def analyze_youtube_comments_with_model(comments_file, model_name="mvp"):
                 # Prédire l'émotion pour ce commentaire avec le modèle approprié
                 if model_name == "stella":
                     pred_labels = predict_emotion_stella(comment_text)
+                    emotion = EMOTION_LABELS[pred_labels]
+                elif model_name == "stella_untrained":
+                    pred_labels = predict_emotion_stella_untrained(comment_text)
                     emotion = EMOTION_LABELS[pred_labels]
                 else:
                     emotion = predict_emotion(comment_text, model, tokenizer, ID2LABEL, threshold)

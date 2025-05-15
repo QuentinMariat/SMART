@@ -5,13 +5,14 @@ from transformers import AutoModel, AutoConfig
 
 
 class BERT(torch.nn.Module):
-    def __init__(self, vocab_size, d_model=768, n_layers=12, heads=12, dropout=0.1):
+    def __init__(self, vocab_size, d_model=768, n_layers=12, heads=12, dropout=0.1, type_vocab_size=3):
         """
         :param vocab_size: vocab_size of total words
         :param d_model: BERT model hidden size
         :param n_layers: numbers of Transformer blocks
         :param heads: number of attention heads
         :param dropout: dropout rate
+        :param type_vocab_size: number of segment types (default 3 for compatibility)
         """
         super().__init__()
         self.d_model = d_model
@@ -20,7 +21,7 @@ class BERT(torch.nn.Module):
         self.feed_forward_hidden = d_model * 4
 
         # embedding: sum of token, positional, and segment embeddings
-        self.embedding = BERTEmbedding(vocab_size=vocab_size, embed_size=d_model)
+        self.embedding = BERTEmbedding(vocab_size=vocab_size, embed_size=d_model, type_vocab_size=type_vocab_size)
 
         # stack of Transformer encoder layers
         self.encoder_blocks = torch.nn.ModuleList([
@@ -69,29 +70,39 @@ class MultiLabelEmotionClassifier(torch.nn.Module):
 class BERTForMultiLabelEmotion(torch.nn.Module):
     def __init__(self, num_labels, vocab_size=None,
                  use_pretrained=False, pretrained_model_name=None,
-                 d_model=768, n_layers=12, heads=12, dropout=0.1):
+                 d_model=768, n_layers=12, heads=12, dropout=0.1, type_vocab_size=None):
         super().__init__()
 
         self.use_pretrained = use_pretrained
 
         if use_pretrained and pretrained_model_name:
             print(f"🔄 Loading pretrained model: {pretrained_model_name}")
-            self.bert = AutoModel.from_pretrained(pretrained_model_name)
+            config = AutoConfig.from_pretrained(pretrained_model_name)
+            
+            # Configurer le nombre de types de segments en fonction du modèle
+            if type_vocab_size is not None:
+                config.type_vocab_size = type_vocab_size
+            elif 'roberta' in pretrained_model_name:
+                config.type_vocab_size = 1  # RoBERTa utilise 1 type de segment par défaut
+            
+            config.output_hidden_states = True
+            self.bert = AutoModel.from_pretrained(pretrained_model_name, config=config, ignore_mismatched_sizes=True)
             print(f"✅ Successfully loaded pretrained model")
             print(f"Model config: {self.bert.config}")
             hidden_size = self.bert.config.hidden_size
             
-            # Freeze only the first 2 layers for transfer learning
+            # Freeze only the first layer for transfer learning
             modules = list(self.bert.modules())
             encoder_layers = [m for m in modules if isinstance(m, type(modules[-1]))]
-            layers_to_freeze = min(2, len(encoder_layers))
+            layers_to_freeze = min(1, len(encoder_layers))
             for param in list(self.bert.parameters())[:layers_to_freeze]:
                 param.requires_grad = False
             print(f"💡 Froze first {layers_to_freeze} layers for transfer learning")
         else:
             print("⚠️ Using custom BERT model without pretraining")
             assert vocab_size is not None, "vocab_size must be provided if not using pretrained model"
-            self.bert = BERT(vocab_size, d_model, n_layers, heads, dropout)
+            self.bert = BERT(vocab_size, d_model, n_layers, heads, dropout, 
+                           type_vocab_size=type_vocab_size if type_vocab_size is not None else 3)
             hidden_size = d_model
 
         # Use MultiLabelEmotionClassifier instead of Sequential
@@ -100,7 +111,7 @@ class BERTForMultiLabelEmotion(torch.nn.Module):
     def forward(self, input_ids, attention_mask=None, token_type_ids=None):
         if self.use_pretrained:
             # Handle models that don't use token_type_ids (like RoBERTa)
-            if 'roberta' in self.bert.config.model_type:
+            if hasattr(self.bert, 'roberta'):
                 outputs = self.bert(input_ids=input_ids,
                                   attention_mask=attention_mask)
             else:
@@ -112,6 +123,39 @@ class BERTForMultiLabelEmotion(torch.nn.Module):
             sequence_output = self.bert(input_ids, token_type_ids)
 
         return self.classifier(sequence_output)
+
+    def load_state_dict(self, state_dict, strict=True):
+        """Custom state dict loading with key remapping for compatibility"""
+        try:
+            # First try loading normally
+            return super().load_state_dict(state_dict, strict)
+        except Exception as e:
+            print(f"Standard loading failed, attempting to remap keys...")
+            
+            # Create new state dict with remapped keys
+            new_state_dict = {}
+            
+            # Get the base name for the transformer (bert or roberta)
+            base_name = 'roberta' if hasattr(self.bert, 'roberta') else 'bert'
+            
+            for k, v in state_dict.items():
+                # Skip unexpected keys
+                if not k.startswith(('bert.', 'roberta.', 'classifier.')):
+                    continue
+                    
+                # Remap keys to match the current model's structure
+                if k.startswith('bert.') and base_name == 'roberta':
+                    new_k = k.replace('bert.', 'roberta.')
+                elif k.startswith('roberta.') and base_name == 'bert':
+                    new_k = k.replace('roberta.', 'bert.')
+                else:
+                    new_k = k
+                    
+                if new_k in self.state_dict():
+                    new_state_dict[new_k] = v
+            
+            # Try loading with remapped keys
+            return super().load_state_dict(new_state_dict, strict=False)
 
     
 # Example usage:

@@ -65,6 +65,8 @@ def train_model(device, fast_dev=False, pretrained_model=None):
         max_length=MAX_SEQ_LENGTH
     )
 
+    # train_dataset, val_dataset, test_dataset, tokenizer = load_and_preprocess_data(tokenizer=bpe,max_train_samples=5000, max_val_samples=5000, max_test_samples=5000)
+
     # 2. Create dataloaders with larger batch size
     train_loader = DataLoader(
         train_dataset, 
@@ -216,12 +218,9 @@ def main():
     # 3. Modèle
     num_labels = train_dataset[0]['labels'].shape[0]  # inférer le nombre de labels
     vocab_size = tokenizer.vocab_size
-    model = BERTForMLMPretraining(vocab_size=vocab_size)
+    model = BERTForMultiLabelEmotion(vocab_size=vocab_size, num_labels=num_labels, use_pretrained=False)
     # 4. Trainer
-    pretrainer = BERTTrainer(model, train_loader, val_loader, num_labels, device=device)
-
     trainer = BERTTrainer(model, train_loader, val_loader, num_labels, device=device)
-
 
     while True:
         print("1. Entraîner le modèle")
@@ -242,10 +241,10 @@ def main():
                 speed_choice = input("Choisissez une vitesse : ")
                 if speed_choice == '1':
                     print("Entraînement lent...")
-                    train_model(device, fast_dev=False, pretrained_model=True)
+                    train_model(device, fast_dev=False, pretrained_model=False)
                 elif speed_choice == '2':
                     print("Entraînement rapide...")
-                    train_model(device, fast_dev=True, pretrained_model=True)
+                    train_model(device, fast_dev=True, pretrained_model=False)
         elif choice == '2':
             pretrain_model(device, fast_dev=False)
         elif choice == '3':
