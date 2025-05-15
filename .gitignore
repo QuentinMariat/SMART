@@ -83,6 +83,7 @@ src/WebApp/backend/scrapping/config.json
 
 #models
 *.pt
+!results/stella_model/*.pt
 
 # cache dataset
 cache/
