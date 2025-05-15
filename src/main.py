@@ -1,6 +1,6 @@
 import sys
 import os
-
+import pandas as pd
 sys.path.append(os.path.abspath(os.path.dirname(os.path.dirname(__file__))))
 
 import torch
@@ -282,11 +282,22 @@ def main():
 
             predictions = trainer.predict(dataloader)
 
-            for i, pred_labels in enumerate(predictions):
-                predicted_emotions = [EMOTION_LABELS[j] for j, val in enumerate(pred_labels) if val == 1]
-                print(f"\nCommentaire {i + 1} : {comments[i]}")
-                print(f"Labels binaires prédits : {pred_labels}")
-                print(f"Émotions détectées : {predicted_emotions}\n")
+            rows = []
+            for i, pred_label in enumerate(predictions):
+                emotion = EMOTION_LABELS[pred_label]  # on récupère le nom
+                comment = comments[i]
+                
+                print(f"\nCommentaire {i + 1} : {comment}")
+                print(f"Label prédit (index) : {pred_label}")
+                print(f"Émotion détectée : {emotion}\n")
+                
+                rows.append({'comment': comment, 'predicted_emotion': emotion})
+
+            # Création du DataFrame
+            df = pd.DataFrame(rows)
+            # Sauvegarde en CSV
+            df.to_csv("localBertOutput/predictions.csv", index=False, encoding="utf-8")
+            print("CSV sauvegardé : predictions.csv")
 
         elif choice == '4':
             print("Au revoir !")

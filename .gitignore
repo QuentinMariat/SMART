@@ -85,5 +85,6 @@ src/WebApp/backend/scrapping/config.json
 *.pt
 !stella_bert.pt
 
+localbertOutput/*.csv
 # cache dataset
 cache/

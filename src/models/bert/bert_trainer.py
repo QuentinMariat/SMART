@@ -167,6 +167,18 @@ class BERTTrainer:
 
         return metrics
     
+    def predict_best(self, test_loader): # le bout qu'il faut modifier pour avoir un retour différent
+        self.model.eval()
+        preds = []
+        with torch.no_grad():
+            for batch in tqdm(test_loader, desc="Predicting", leave=False):
+                input_ids = batch['input_ids'].to(self.device)
+                attention_mask = batch['attention_mask'].to(self.device)
+                outputs = self.model(input_ids, attention_mask=attention_mask)
+                predicted = torch.argmax(outputs, dim=1).cpu().numpy()
+                preds.extend(predicted)
+        print(preds)
+        return preds
     def predict(self, test_loader):
       self.model.eval()
       preds = []
@@ -174,10 +186,10 @@ class BERTTrainer:
           for batch in tqdm(test_loader, desc="Predicting", leave=False):
               input_ids = batch['input_ids'].to(self.device)
               attention_mask = batch['attention_mask'].to(self.device)
-              outputs = self.model(input_ids, attention_mask=attention_mask)
               predicted = (outputs > self.thresholds).int().cpu().numpy()
               preds.extend(predicted)
       return preds
+              outputs = self.model(input_ids, attention_mask=attention_mask)
 
     def evaluate_on_test(self, test_loader):
         self.model.eval()
@@ -217,7 +229,7 @@ class BERTTrainer:
         print(f'Test Loss: {avg_loss:.4f} | F1: {f1:.4f} | Acc: {acc:.4f}')
 
     def load_model(self, path):
-      self.model.load_state_dict(torch.load(path, map_location=self.device))
+      self.model.load_state_dict(torch.load(path, map_location=self.device), strict=False)
       self.model.to(self.device)
       print(f"✅ Modèle chargé depuis '{path}'")
 
