@@ -94,15 +94,8 @@ class BERTForMultiLabelEmotion(torch.nn.Module):
             self.bert = BERT(vocab_size, d_model, n_layers, heads, dropout)
             hidden_size = d_model
 
-        # Enhanced classification head for multi-label
-        self.classifier = torch.nn.Sequential(
-            torch.nn.Dropout(dropout),
-            torch.nn.Linear(hidden_size, hidden_size),
-            torch.nn.GELU(),
-            torch.nn.LayerNorm(hidden_size),
-            torch.nn.Dropout(dropout),
-            torch.nn.Linear(hidden_size, num_labels)
-        )
+        # Use MultiLabelEmotionClassifier instead of Sequential
+        self.classifier = MultiLabelEmotionClassifier(hidden_size, num_labels, dropout)
 
     def forward(self, input_ids, attention_mask=None, token_type_ids=None):
         if self.use_pretrained:
@@ -115,12 +108,10 @@ class BERTForMultiLabelEmotion(torch.nn.Module):
                                   attention_mask=attention_mask,
                                   token_type_ids=token_type_ids)
             sequence_output = outputs.last_hidden_state  # (batch, seq_len, hidden)
-            pooled_output = sequence_output[:, 0]  # Use [CLS] token
         else:
             sequence_output = self.bert(input_ids, token_type_ids)
-            pooled_output = sequence_output[:, 0]
 
-        return self.classifier(pooled_output)
+        return self.classifier(sequence_output)
 
     
 # Example usage:

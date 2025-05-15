@@ -65,7 +65,7 @@ def train_model(device, fast_dev=False, pretrained_model=None):
     if fast_dev:
         dataset = loading_dataset(max_train_samples=5000, max_val_samples=1000, max_test_samples=1000)
     else:
-        dataset = loading_dataset(max_train_samples=50000, max_val_samples=5000, max_test_samples=5000)
+        dataset = loading_dataset()
     
     # Preprocess dataset with the new max_length parameter
     train_dataset, val_dataset, test_dataset, tokenizer = preprocess_dataset(
