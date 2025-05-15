@@ -280,7 +280,7 @@ def main():
 
             dataloader = create_comments_dataloader(comments, tokenizer, device)
 
-            predictions = trainer.predict(dataloader)
+            predictions = trainer.predict_best(dataloader)
 
             rows = []
             for i, pred_label in enumerate(predictions):

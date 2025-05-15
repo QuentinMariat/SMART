@@ -179,6 +179,7 @@ class BERTTrainer:
                 preds.extend(predicted)
         print(preds)
         return preds
+    
     def predict(self, test_loader):
       self.model.eval()
       preds = []
@@ -186,10 +187,11 @@ class BERTTrainer:
           for batch in tqdm(test_loader, desc="Predicting", leave=False):
               input_ids = batch['input_ids'].to(self.device)
               attention_mask = batch['attention_mask'].to(self.device)
+              outputs = self.model(input_ids, attention_mask=attention_mask)
               predicted = (outputs > self.thresholds).int().cpu().numpy()
               preds.extend(predicted)
       return preds
-              outputs = self.model(input_ids, attention_mask=attention_mask)
+              
 
     def evaluate_on_test(self, test_loader):
         self.model.eval()
