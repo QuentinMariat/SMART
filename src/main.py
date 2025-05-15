@@ -114,7 +114,7 @@ def train_model(device, fast_dev=False, pretrained_model=None):
     # 5. Train with the new configuration
     trainer.train(
         epochs=TRAINING_ARGS["num_train_epochs"],
-        lr=2e-5,
+        lr=1e-5,
         weight_decay=TRAINING_ARGS["weight_decay"]
     )
 

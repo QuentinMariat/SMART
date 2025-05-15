@@ -6,7 +6,7 @@ from tqdm import tqdm
 from transformers import get_linear_schedule_with_warmup
 
 
-from src.config.settings import EMOTION_THRESHOLDS
+from src.config.settings import EMOTION_THRESHOLDS, EMOTION_LABELS
 
 class BERTTrainer:
     def __init__(self, model, train_loader, val_loader, num_labels=None, device='cuda'):
@@ -32,8 +32,8 @@ class BERTTrainer:
         
         print("Class weights:", self.class_weights.tolist())
         
-        # Weighted BCE loss
-        self.criterion = lambda outputs, targets: torch.nn.BCELoss(weight=self.class_weights)(outputs, targets)
+        # Weighted BCE loss with logits
+        self.criterion = lambda outputs, targets: torch.nn.BCEWithLogitsLoss(weight=self.class_weights)(outputs, targets)
         self.thresholds = torch.tensor(list(EMOTION_THRESHOLDS.values()), device=self.device)
 
     def train(self, epochs=3, lr=2e-5, weight_decay=0.01, file_name='bert_multilabel.pt'):
@@ -132,7 +132,11 @@ class BERTTrainer:
                 loss = self.criterion(outputs, labels)
                 val_loss += loss.item()
 
-                preds = (outputs > self.thresholds).float()
+                # Apply sigmoid to get probabilities
+                probs = torch.sigmoid(outputs)
+                # Use a single threshold of 0.5 for all emotions
+                preds = (probs > self.thresholds).float()
+                
                 all_preds.append(preds.cpu())
                 all_labels.append(labels.cpu())
 
@@ -142,17 +146,24 @@ class BERTTrainer:
         # Calculate metrics
         metrics = {
             'loss': val_loss / len(self.val_loader),
-            'f1': f1_score(all_labels, all_preds, average='micro'),
-            'f1_macro': f1_score(all_labels, all_preds, average='macro'),
-            'precision': precision_score(all_labels, all_preds, average='micro'),
-            'recall': recall_score(all_labels, all_preds, average='micro')
+            'f1': f1_score(all_labels, all_preds, average='micro', zero_division=0),
+            'f1_macro': f1_score(all_labels, all_preds, average='macro', zero_division=0),
+            'precision': precision_score(all_labels, all_preds, average='micro', zero_division=0),
+            'recall': recall_score(all_labels, all_preds, average='micro', zero_division=0)
         }
 
         print(f"Val Loss: {metrics['loss']:.4f} | "
               f"F1: {metrics['f1']:.4f} | "
               f"F1-macro: {metrics['f1_macro']:.4f} | "
               f"Precision: {metrics['precision']:.4f} | "
-              f"Recall: {metrics['recall']:.4f}")
+              f"Recall: {metrics['recall']:.4f} | "
+              f"Accuracy: {accuracy_score(all_labels, all_preds):.4f}")
+
+        # Print per-class metrics for debugging
+        class_f1 = f1_score(all_labels, all_preds, average=None, zero_division=0)
+        print("\nPer-class F1 scores:")
+        for label, score in zip(EMOTION_LABELS, class_f1):
+            print(f"{label}: {score:.4f}")
 
         return metrics
     
@@ -169,31 +180,41 @@ class BERTTrainer:
       return preds
 
     def evaluate_on_test(self, test_loader):
-      self.model.eval()
-      val_loss = 0.0
-      preds = []
-      targets = []
+        self.model.eval()
+        val_loss = 0.0
+        preds = []
+        targets = []
 
-      with torch.no_grad():
-          for batch in tqdm(test_loader, desc="Testing", leave=False):
-              input_ids = batch['input_ids'].to(self.device)
-              attention_mask = batch['attention_mask'].to(self.device)
-              labels = batch['labels'].to(self.device)
+        with torch.no_grad():
+            for batch in tqdm(test_loader, desc="Testing", leave=False):
+                input_ids = batch['input_ids'].to(self.device)
+                attention_mask = batch['attention_mask'].to(self.device)
+                labels = batch['labels'].to(self.device)
 
-              outputs = self.model(input_ids, attention_mask=attention_mask)
-              loss = self.criterion(outputs, labels)
-              val_loss += loss.item()
+                outputs = self.model(input_ids, attention_mask=attention_mask)
+                loss = self.criterion(outputs, labels)
+                val_loss += loss.item()
 
-              pred = (outputs > self.thresholds).float().cpu().numpy()
-              target = labels.cpu().numpy()
+                # Apply sigmoid to get probabilities
+                probs = torch.sigmoid(outputs)
+                # Use a single threshold of 0.5
+                pred = (probs > self.thresholds).float().cpu().numpy()
+                target = labels.cpu().numpy()
 
-              preds.extend(pred)
-              targets.extend(target)
+                preds.extend(pred)
+                targets.extend(target)
 
-      avg_loss = val_loss / len(test_loader)
-      f1 = f1_score(targets, preds, average='micro')
-      acc = accuracy_score(targets, preds)
-      print(f'Test Loss: {avg_loss:.4f} | F1: {f1:.4f} | Acc: {acc:.4f}')
+        avg_loss = val_loss / len(test_loader)
+        f1 = f1_score(targets, preds, average='micro', zero_division=0)
+        acc = accuracy_score(targets, preds)
+        
+        # Calculate per-class metrics
+        class_f1 = f1_score(targets, preds, average=None, zero_division=0)
+        print("\nPer-class F1 scores:")
+        for label, score in zip(EMOTION_LABELS, class_f1):
+            print(f"{label}: {score:.4f}")
+            
+        print(f'Test Loss: {avg_loss:.4f} | F1: {f1:.4f} | Acc: {acc:.4f}')
 
     def load_model(self, path):
       self.model.load_state_dict(torch.load(path, map_location=self.device))

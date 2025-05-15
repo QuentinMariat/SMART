@@ -46,7 +46,7 @@ EMOTION_THRESHOLDS = {
                         'remorse': 0.10,
                         'sadness': 0.40,
                         'surprise': 0.15,
-                        'neutral': 0.25 
+                        'neutral': 0.60 
         }
 
 LABEL2ID = {label: i for i, label in enumerate(EMOTION_LABELS)}
@@ -57,10 +57,10 @@ BASE_MODEL_NAME = "distilbert-base-uncased"
 # Adjusted training parameters for multi-label learning
 TRAINING_ARGS = {
     "output_dir": "./results",
-    "num_train_epochs": 10,
-    "per_device_train_batch_size": 32,
-    "per_device_eval_batch_size": 64,
-    "warmup_ratio": 0.1,  # 10% of training steps
+    "num_train_epochs": 15,  # Increased epochs
+    "per_device_train_batch_size": 16,  # Reduced batch size for better generalization
+    "per_device_eval_batch_size": 32,
+    "warmup_ratio": 0.1,
     "weight_decay": 0.01,
     "logging_dir": "./logs",
     "logging_steps": 100,
@@ -71,7 +71,7 @@ TRAINING_ARGS = {
     "load_best_model_at_end": True,
     "metric_for_best_model": "f1",
     "greater_is_better": True,
-    "fp16": True  # Enable mixed precision training
+    "fp16": True
 }
 
 # seuil de probabilité pour la classification multi-label : une prédiction est considérée positive pour une émotion si sa probabilité dépasse ce seuil.

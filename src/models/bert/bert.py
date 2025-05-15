@@ -61,8 +61,8 @@ class MultiLabelEmotionClassifier(torch.nn.Module):
         cls_token = bert_output[:, 0]         # [CLS] token representation
         cls_token = self.dropout(cls_token)
         logits = self.classifier(cls_token)   # (batch_size, num_labels)
-        probs = self.activation(logits)       # probabilities in [0,1]
-        return probs            # TODO passer à return logits pour BCEWithLogitsLoss
+        # probs = self.activation(logits)       # probabilities in [0,1]
+        return logits            # TODO passer à return logits pour BCEWithLogitsLoss
 
 
 
@@ -81,12 +81,13 @@ class BERTForMultiLabelEmotion(torch.nn.Module):
             print(f"Model config: {self.bert.config}")
             hidden_size = self.bert.config.hidden_size
             
-            # Freeze the bottom layers for transfer learning
+            # Freeze only the first 2 layers for transfer learning
             modules = list(self.bert.modules())
-            num_layers = sum(1 for m in modules if isinstance(m, type(modules[-1])))
-            for param in list(self.bert.parameters())[:(num_layers//2)]:
+            encoder_layers = [m for m in modules if isinstance(m, type(modules[-1]))]
+            layers_to_freeze = min(2, len(encoder_layers))
+            for param in list(self.bert.parameters())[:layers_to_freeze]:
                 param.requires_grad = False
-            print(f"💡 Froze bottom {num_layers//2} layers for transfer learning")
+            print(f"💡 Froze first {layers_to_freeze} layers for transfer learning")
         else:
             print("⚠️ Using custom BERT model without pretraining")
             assert vocab_size is not None, "vocab_size must be provided if not using pretrained model"
@@ -100,8 +101,7 @@ class BERTForMultiLabelEmotion(torch.nn.Module):
             torch.nn.GELU(),
             torch.nn.LayerNorm(hidden_size),
             torch.nn.Dropout(dropout),
-            torch.nn.Linear(hidden_size, num_labels),
-            torch.nn.Sigmoid()
+            torch.nn.Linear(hidden_size, num_labels)
         )
 
     def forward(self, input_ids, attention_mask=None, token_type_ids=None):
