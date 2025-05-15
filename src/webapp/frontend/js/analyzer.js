@@ -27,6 +27,55 @@ function initAnalyzer() {
         urlInput.value = sampleYoutubeUrl;
     });
 
+    // Nouvelle fonction pour réinitialiser complètement l'interface
+    function resetAnalysisUI() {
+        // Vider le conteneur de résultats
+        if (resultsContainer) {
+            resultsContainer.innerHTML = "";
+            resultsContainer.classList.add("hidden");
+        }
+
+        // Réinitialiser les compteurs et autres éléments
+        if (commentCount) commentCount.textContent = "0";
+        if (commentsContainer) commentsContainer.innerHTML = "";
+
+        // Supprimer les popups résiduelles s'il y en a
+        const existingPopup = document.getElementById("comments-popup-overlay");
+        if (existingPopup) {
+            document.body.removeChild(existingPopup);
+        }
+
+        // Tout autre nettoyage nécessaire
+        document.querySelectorAll(".sentiment-summary").forEach(el => {
+            el.style.display = "none";
+        });
+
+        // Recréer le conteneur d'émotions s'il existe
+        const emotionsHistogram = document.getElementById("emotions-histogram");
+        if (emotionsHistogram) {
+            emotionsHistogram.innerHTML = `
+                <div class="flex flex-col items-center justify-center h-64">
+                    <svg class="animate-spin h-8 w-8 text-grey-500 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span class="text-sm text-gray-700">En attente des données d'émotions...</span>
+                    <span class="text-xs text-gray-500 mt-2">Les résultats apparaîtront ici après l'analyse</span>
+                </div>
+            `;
+        }
+
+        // Réinitialiser l'URL d'analyse en ajoutant un paramètre timestamp
+        // Cela forcera le backend à considérer cette requête comme unique
+        const currentURL = urlInput.value.trim();
+        if (currentURL && currentURL.includes("youtube.com/watch")) {
+            // Obtenir l'URL de base sans paramètres de timestamp
+            const baseURL = currentURL.split("&t=")[0];
+            // Ajouter un timestamp comme paramètre
+            urlInput.value = `${baseURL}&t=${Date.now()}`;
+        }
+    }
+
     // Analyze button
     analyzeBtn?.addEventListener("click", async () => {
         const url = urlInput.value.trim();
@@ -41,6 +90,9 @@ function initAnalyzer() {
             alert("Merci d'entrer une URL de vidéo YouTube valide");
             return;
         }
+
+        // Réinitialiser complètement l'interface avant d'exécuter une nouvelle analyse
+        resetAnalysisUI();
 
         // Show loading state
         analyzeBtn.innerHTML =
@@ -376,6 +428,8 @@ function generateMockAnalysis() {
 
 // Display analysis results
 function displayResults(data) {
+    console.log("Affichage des résultats d'analyse:", data);
+
     const resultsContainer = document.getElementById("results-container");
     const commentCount = document.getElementById("comment-count");
 
@@ -403,13 +457,29 @@ function displayResults(data) {
     }
 
     // Update comment count
-    commentCount.textContent = data.totalComments;
+    if (commentCount) {
+        commentCount.textContent = data.totalComments;
+    }
 
     // Simplification - masquer tous les éléments non nécessaires
     const sentimentSummaries = document.querySelectorAll(".sentiment-summary");
     sentimentSummaries.forEach(el => {
-        el.parentElement.style.display = "none";
+        if (el.parentElement) {
+            el.parentElement.style.display = "none";
+        }
     });
+
+    // Vérifier si le conteneur d'émotions existe déjà
+    let emotionsContainer = document.getElementById("emotions-histogram");
+    if (!emotionsContainer) {
+        console.error(
+            "Conteneur d'émotions non trouvé, création d'un élément temporaire"
+        );
+        emotionsContainer = document.createElement("div");
+        emotionsContainer.id = "emotions-histogram";
+        emotionsContainer.className = "py-4 bg-white rounded";
+        resultsContainer.appendChild(emotionsContainer);
+    }
 
     // Créer un conteneur pour notre graphique simplifié
     const graphContainer = document.createElement("div");
@@ -420,9 +490,19 @@ function displayResults(data) {
     `;
     resultsContainer.appendChild(graphContainer);
 
-    // Générer uniquement notre graphique simplifié
+    // Vérifier les données d'émotions et log pour déboguer
     if (data.emotion_counts) {
+        console.log("Données d'émotions reçues:", data.emotion_counts);
         renderSimpleEmotionChart(data.emotion_counts);
+    } else {
+        console.error(
+            "Aucune donnée d'émotions reçue pour l'affichage du graphique"
+        );
+        const chartContainer = document.getElementById("simple-emotion-chart");
+        if (chartContainer) {
+            chartContainer.innerHTML =
+                '<div class="text-center p-4"><span class="text-red-500">Aucune donnée d\'émotion disponible</span></div>';
+        }
     }
 
     // Scroll to results
@@ -523,6 +603,7 @@ function renderSimpleEmotionChart(emotionCounts) {
     // Séparer l'émotion neutre des autres émotions
     let neutralEmotionEntry = null;
     let neutralCount = 0;
+    let sortedEmotions = [];
 
     // Extraire l'entrée neutre si elle existe
     if ("neutral" in emotionCounts) {
@@ -965,15 +1046,34 @@ function showCommentsPopupForEmotion(emotion) {
 // Fonction pour récupérer les commentaires d'une émotion spécifique
 async function fetchCommentsForEmotion(emotion) {
     try {
-        const response = await fetch(
-            `http://localhost:8000/comments/${emotion}`,
-            {
-                method: "GET",
-                headers: {
-                    "Content-Type": "application/json"
-                }
-            }
+        // Récupérer l'URL de la vidéo actuelle
+        const urlInput = document.getElementById("url-input");
+        const currentVideoURL = urlInput ? urlInput.value.trim() : "";
+
+        // Extraire l'ID de la vidéo
+        let videoId = "";
+        if (currentVideoURL && currentVideoURL.includes("youtube.com/watch")) {
+            videoId = getYoutubeVideoId(currentVideoURL);
+        }
+
+        // Construire l'URL avec le paramètre videoId si disponible
+        let apiUrl = `http://localhost:8000/comments/${emotion}`;
+        if (videoId) {
+            apiUrl += `?video_id=${videoId}`;
+        }
+
+        console.log(
+            `Récupération des commentaires pour l'émotion "${emotion}"${
+                videoId ? ` et la vidéo ${videoId}` : ""
+            }`
         );
+
+        const response = await fetch(apiUrl, {
+            method: "GET",
+            headers: {
+                "Content-Type": "application/json"
+            }
+        });
 
         if (!response.ok) {
             throw new Error(`Erreur API: ${response.statusText}`);
