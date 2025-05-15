@@ -62,6 +62,7 @@ class DetailedAnalysisResponse(BaseModel):
     negative: float
     neutral: float
     comments: List[Comment]
+    emotion_counts: Optional[dict] = None  # Ajout d'un champ optional pour les émotions
 
 async def generate_analysis(url) -> DetailedAnalysisResponse:
     """
@@ -137,6 +138,19 @@ async def generate_analysis(url) -> DetailedAnalysisResponse:
         normalized_results = analysis_results["normalized_results"]
         logger.info(f"Commentaires analysés avec succès: {len(normalized_results)}")
         
+        # Log pour vérifier les décomptes d'émotions
+        if "emotion_counts" in analysis_results:
+            emotion_counts = analysis_results["emotion_counts"]
+            logger.info(f"Emotions détectées: {emotion_counts}")
+            
+            # Vérifier la présence de gratitude
+            if "gratitude" in emotion_counts:
+                logger.info(f"✅ Gratitude détectée avec {emotion_counts['gratitude']} occurrences")
+            else:
+                logger.warning("⚠️ Aucune gratitude détectée dans les émotions!")
+        else:
+            logger.warning("⚠️ Aucun décompte d'émotions (emotion_counts) dans les résultats d'analyse!")
+        
         # Récupérer les statistiques de sentiment
         positive_ratio = analysis_results['sentiment_percentages']['positive'] / 100
         negative_ratio = analysis_results['sentiment_percentages']['negative'] / 100
@@ -179,7 +193,8 @@ async def generate_analysis(url) -> DetailedAnalysisResponse:
             positive=round(positive_ratio, 2),
             negative=round(negative_ratio, 2),
             neutral=round(neutral_ratio, 2),
-            comments=comments_for_frontend
+            comments=comments_for_frontend,
+            emotion_counts=analysis_results.get("emotion_counts", {})
         )
         
         logger.debug("Analyse complétée avec succès")
@@ -315,3 +330,82 @@ async def getCommentsFromYoutube(url):
     except Exception as e:
         logger.error(f"Erreur lors de la récupération des commentaires YouTube: {str(e)}")
         raise
+
+@app.get("/comments/{emotion}", response_model=None)
+async def get_comments_by_emotion(emotion: str):
+    """
+    Récupère les commentaires pour une émotion spécifique à partir des fichiers CSV.
+    """
+    logger.info(f"Requête de commentaires pour l'émotion: {emotion}")
+    
+    try:
+        # Trouver les fichiers CSV dans le répertoire de sortie
+        csv_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "scrapper", "output")
+        csv_files = [f for f in os.listdir(csv_dir) if f.endswith('_labeled.csv') or f.endswith('_labeled_20') or 'labeled' in f]
+        
+        if not csv_files:
+            logger.warning("Aucun fichier CSV d'analyse trouvé")
+            return {"comments": []}
+        
+        # Utiliser le fichier le plus récent
+        csv_files.sort(reverse=True)
+        latest_csv = os.path.join(csv_dir, csv_files[0])
+        
+        logger.info(f"Lecture des commentaires depuis: {latest_csv}")
+        
+        comments = []
+        if os.path.exists(latest_csv):
+            with open(latest_csv, 'r', encoding='utf-8') as file:
+                import csv
+                reader = csv.reader(file)
+                header = next(reader)  # Skip header row
+                
+                # Déterminer les indices des colonnes
+                text_idx = header.index('text') if 'text' in header else 0
+                label_idx = None
+                prob_idx = None
+                
+                for i, col in enumerate(header):
+                    if col.lower() == 'label' or col.lower() == 'emotion':
+                        label_idx = i
+                    elif col.lower() == 'probability' or col.lower() == 'prob' or col.lower() == 'confidence':
+                        prob_idx = i
+                
+                if label_idx is None:
+                    logger.warning("Colonne 'label' non trouvée dans le CSV")
+                    return {"comments": []}
+                
+                # Lire les lignes et filtrer par émotion
+                for i, row in enumerate(reader):
+                    if len(row) <= label_idx:
+                        continue  # Ignorer les lignes incomplètes
+                    
+                    if row[label_idx].lower() == emotion.lower():
+                        comment = {
+                            "id": i,
+                            "text": row[text_idx]
+                        }
+                        
+                        # Ajouter la probabilité si disponible
+                        if prob_idx is not None and len(row) > prob_idx:
+                            try:
+                                comment["probability"] = float(row[prob_idx])
+                            except (ValueError, TypeError):
+                                pass
+                        
+                        comments.append(comment)
+        
+        logger.info(f"Nombre de commentaires trouvés pour l'émotion '{emotion}': {len(comments)}")
+        
+        # Limiter le nombre de commentaires retournés pour des raisons de performance
+        max_comments = 100
+        if len(comments) > max_comments:
+            import random
+            comments = random.sample(comments, max_comments)
+            logger.info(f"Limité à {max_comments} commentaires aléatoires")
+        
+        return {"comments": comments}
+    
+    except Exception as e:
+        logger.error(f"Erreur lors de la récupération des commentaires pour l'émotion '{emotion}': {str(e)}", exc_info=True)
+        return {"error": str(e), "comments": []}
