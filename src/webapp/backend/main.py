@@ -228,18 +228,6 @@ async def exception_handler(request: Request, exc: Exception):
         }
     )
 
-# === Endpoint for Twitter analysis ===
-@app.post("/analyze/twitter", response_model=DetailedAnalysisResponse)
-async def analyze_twitter(request: URLRequest):
-    logger.info(f"Twitter analysis requested for URL: {request.url}")
-    try:
-        result = await generate_analysis(request.url)
-        logger.info("Twitter analysis completed successfully")
-        return result
-    except Exception as e:
-        logger.error(f"Error during Twitter analysis: {str(e)}", exc_info=True)
-        raise
-
 # === Endpoint for YouTube analysis ===
 @app.post("/analyze/youtube", response_model=DetailedAnalysisResponse)
 async def analyze_youtube(request: URLRequest):
