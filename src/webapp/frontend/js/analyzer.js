@@ -412,6 +412,9 @@ function displayResults(data) {
     // Show results container
     resultsContainer.classList.remove("hidden");
 
+    // Vider le conteneur avant d'ajouter de nouveaux éléments
+    resultsContainer.innerHTML = "";
+
     // Afficher un message de succès simple
     const successMsg = document.createElement("div");
     successMsg.className =
@@ -420,10 +423,14 @@ function displayResults(data) {
         <i class="fas fa-check-circle text-green-600 mr-2 text-xl"></i>
         <span>Analyse complète de ${data.totalComments} commentaires</span>
     `;
-
-    // Vider le conteneur avant d'ajouter de nouveaux éléments
-    resultsContainer.innerHTML = "";
     resultsContainer.appendChild(successMsg);
+
+    // Si c'est une vidéo YouTube, afficher les informations de la vidéo
+    const urlInput = document.getElementById("url-input");
+    if (urlInput && urlInput.value && urlInput.value.includes("youtube.com")) {
+        // Créer un conteneur pour les informations de la vidéo
+        addVideoInfoCard(urlInput.value, resultsContainer);
+    }
 
     // Update comment count
     commentCount.textContent = data.totalComments;
@@ -1074,4 +1081,120 @@ function updatePopupWithComments(bodyElement, comments, countElement) {
     countElement.textContent = `${comments.length} commentaire${
         comments.length > 1 ? "s" : ""
     }`;
+}
+
+// Fonction pour extraire l'ID de la vidéo YouTube
+function getYoutubeVideoId(url) {
+    const regExp =
+        /^.*((youtu.be\/)|(v\/)|(\/u\/\w\/)|(embed\/)|(watch\?))\??v?=?([^#&?]*).*/;
+    const match = url.match(regExp);
+    return match && match[7].length === 11 ? match[7] : null;
+}
+
+// Fonction pour récupérer et afficher les informations de la vidéo
+async function addVideoInfoCard(url, container) {
+    try {
+        // Extraire l'ID de la vidéo
+        const videoId = getYoutubeVideoId(url);
+        if (!videoId) {
+            console.warn("Impossible d'extraire l'ID de la vidéo YouTube");
+            return;
+        }
+
+        // Créer un élément pour afficher les informations de la vidéo
+        const videoInfoCard = document.createElement("div");
+        videoInfoCard.className =
+            "bg-white rounded-lg shadow-md p-4 mb-6 border border-gray-200 flex items-start overflow-hidden";
+
+        // Ajouter une miniature de la vidéo (en utilisant l'API YouTube)
+        const thumbnailUrl = `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`;
+
+        videoInfoCard.innerHTML = `
+            <div class="flex-shrink-0 mr-4 relative group">
+                <img src="${thumbnailUrl}" alt="Miniature de la vidéo" class="w-36 h-auto rounded-md shadow-sm">
+                <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black bg-opacity-50 rounded-md">
+                    <a href="https://www.youtube.com/watch?v=${videoId}" target="_blank" class="text-white">
+                        <i class="fas fa-play-circle text-3xl"></i>
+                    </a>
+                </div>
+            </div>
+            <div class="flex-grow overflow-hidden">
+                <h3 id="video-title-${videoId}" class="text-lg font-semibold text-gray-800 mb-1 overflow-hidden text-ellipsis">
+                    Chargement du titre...
+                </h3>
+                <div class="flex items-center text-sm text-gray-600 mb-2">
+                    <i class="fab fa-youtube text-red-600 mr-1"></i>
+                    <a href="https://www.youtube.com/watch?v=${videoId}" target="_blank" class="hover:underline">
+                        Vidéo YouTube
+                    </a>
+                </div>
+                <div id="video-meta-${videoId}" class="text-sm text-gray-500 flex items-center space-x-3">
+                    <span><i class="fas fa-spinner fa-spin mr-1"></i> Chargement...</span>
+                </div>
+            </div>
+        `;
+
+        // Ajouter la carte à l'interface
+        container.appendChild(videoInfoCard);
+
+        // Essayer de récupérer le titre via l'API oEmbed de YouTube
+        try {
+            const response = await fetch(
+                `https://noembed.com/embed?url=https://www.youtube.com/watch?v=${videoId}`
+            );
+            const data = await response.json();
+
+            if (data) {
+                // Mettre à jour le titre
+                const titleElement = document.getElementById(
+                    `video-title-${videoId}`
+                );
+                if (titleElement && data.title) {
+                    titleElement.textContent = data.title;
+                    titleElement.title = data.title; // Ajouter un tooltip pour voir le titre complet
+                }
+
+                // Mettre à jour les métadonnées
+                const metaElement = document.getElementById(
+                    `video-meta-${videoId}`
+                );
+                if (metaElement) {
+                    // Formater les informations disponibles
+                    let metaHtml = "";
+
+                    // Ajouter l'auteur si disponible
+                    if (data.author_name) {
+                        metaHtml += `<span title="Chaîne YouTube"><i class="fas fa-user mr-1"></i> ${data.author_name}</span>`;
+                    }
+
+                    metaElement.innerHTML =
+                        metaHtml || "<span>Informations non disponibles</span>";
+                }
+            }
+        } catch (error) {
+            console.warn(
+                "Impossible de récupérer les informations de la vidéo:",
+                error
+            );
+            const titleElement = document.getElementById(
+                `video-title-${videoId}`
+            );
+            if (titleElement) {
+                titleElement.textContent = "Vidéo YouTube";
+            }
+
+            const metaElement = document.getElementById(
+                `video-meta-${videoId}`
+            );
+            if (metaElement) {
+                metaElement.innerHTML =
+                    "<span>Informations non disponibles</span>";
+            }
+        }
+    } catch (error) {
+        console.error(
+            "Erreur lors de la création de la carte d'information:",
+            error
+        );
+    }
 }
