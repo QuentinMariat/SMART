@@ -23,7 +23,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import sys
 import os
 from scrapper.youtube import get_video_id, fetch_comments, getTopComments
-from sentiment_analyzer import analyze_youtube_comments_with_model
+from sentiment_analyzer import analyze_youtube_comments_with_model, initialize_stella_model
 import csv
 from datetime import datetime
 
@@ -36,6 +36,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.on_event("startup")
+async def startup_event():
+    """
+    Initialise le modèle Stella au démarrage du serveur
+    """
+    logger.info("🚀 Démarrage du serveur - Initialisation du modèle Stella...")
+    if initialize_stella_model():
+        logger.info("✅ Modèle Stella initialisé avec succès")
+    else:
+        logger.error("❌ Échec de l'initialisation du modèle Stella")
 
 # === URL input schema ===
 class URLRequest(BaseModel):
