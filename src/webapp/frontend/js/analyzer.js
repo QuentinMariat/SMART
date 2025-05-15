@@ -581,13 +581,6 @@ function renderSimpleEmotionChart(emotionCounts) {
         sortedEmotions
     );
 
-    // Créer un graphique à barres simple
-    const chartDiv = document.createElement("div");
-    chartDiv.className = "space-y-4 max-h-96 overflow-y-auto p-2";
-
-    // Si aucune barre n'est créée, on garde une trace
-    let barsCreated = 0;
-
     // Calculer le total sans les neutres pour un pourcentage plus significatif
     const totalNonNeutral = sortedEmotions.reduce((sum, [emotion, count]) => {
         return emotion !== "neutral" ? sum + count : sum;
@@ -596,13 +589,12 @@ function renderSimpleEmotionChart(emotionCounts) {
     // Calculer le total global pour la légende
     const totalEmotions = totalNonNeutral + neutralCount;
 
-    // Déterminer la valeur maximale pour les barres (maximum non neutre)
-    const maxCount =
-        sortedEmotions.length > 0 && sortedEmotions[0][0] !== "neutral"
-            ? sortedEmotions[0][1]
-            : sortedEmotions.length > 1
-            ? sortedEmotions[1][1]
-            : 1;
+    // Créer un graphique à barres simple
+    const chartDiv = document.createElement("div");
+    chartDiv.className = "space-y-4 max-h-96 overflow-y-auto p-2";
+
+    // Si aucune barre n'est créée, on garde une trace
+    let barsCreated = 0;
 
     // Créer une barre pour chaque émotion
     sortedEmotions.forEach(([emotion, count]) => {
@@ -623,9 +615,20 @@ function renderSimpleEmotionChart(emotionCounts) {
         nameElement.className = "font-medium";
         nameElement.textContent = emotionName;
 
+        // Calculer le pourcentage et préparer l'affichage du rapport
+        let displayTotal;
+        let currentPercentage;
+        if (emotion === "neutral") {
+            displayTotal = totalEmotions;
+            currentPercentage = Math.round((count / totalEmotions) * 100);
+        } else {
+            displayTotal = totalNonNeutral;
+            currentPercentage = Math.round((count / totalNonNeutral) * 100);
+        }
+
         const countElement = document.createElement("div");
         countElement.className = "font-bold";
-        countElement.textContent = count;
+        countElement.textContent = `${count}/${displayTotal}`;
 
         header.appendChild(nameElement);
         header.appendChild(countElement);
@@ -635,27 +638,28 @@ function renderSimpleEmotionChart(emotionCounts) {
         const progressBar = document.createElement("div");
         progressBar.className = "w-full bg-gray-200 rounded-full h-6";
 
-        // Calculer la largeur maximale pour la visualisation
-        // Pour les non-neutres, on calcule par rapport au maximum des non-neutres
-        // Pour le neutre, on calcule par rapport au maximum global
+        // Calculer la largeur maximale pour la visualisation en fonction du type d'émotion
         let percentage;
         if (emotion === "neutral") {
-            // Pour le neutre, on utilise une formule spéciale pour ne pas que la barre soit trop grande
+            // Pour le neutre: calculer par rapport au total des commentaires
+            percentage = Math.max(5, Math.round((count / totalEmotions) * 100));
+        } else {
+            // Pour les émotions non neutres: calculer par rapport au total sans les neutres
             percentage = Math.max(
                 5,
-                Math.min(70, Math.round((count / (maxCount * 1.5)) * 100))
+                Math.round((count / totalNonNeutral) * 100)
             );
-        } else {
-            // Pour les autres émotions, on utilise le calcul normal
-            percentage = Math.max(5, Math.round((count / maxCount) * 100));
         }
+
+        // Limiter à 100% maximum pour éviter les barres trop grandes
+        percentage = Math.min(percentage, 100);
 
         const bar = document.createElement("div");
         bar.className =
             "h-6 rounded-full flex items-center justify-center text-white text-xs font-bold";
         bar.style.width = `${percentage}%`;
         bar.style.backgroundColor = colorHex;
-        bar.textContent = count;
+        bar.textContent = `${currentPercentage}%`;
 
         progressBar.appendChild(bar);
         barContainer.appendChild(progressBar);
@@ -679,19 +683,15 @@ function renderSimpleEmotionChart(emotionCounts) {
     const legend = document.createElement("div");
     legend.className = "text-sm text-gray-600 mt-4 text-center";
 
-    // Calcul du pourcentage pour les émotions non neutres vs neutres
-    let nonNeutralPercentage =
-        totalNonNeutral > 0
-            ? Math.round((totalNonNeutral / totalEmotions) * 100)
-            : 0;
-    let neutralPercentage =
+    // Calcul du pourcentage de neutres pour l'affichage
+    const neutralPercentage =
         neutralCount > 0 ? Math.round((neutralCount / totalEmotions) * 100) : 0;
 
     legend.innerHTML = `
-        <div>${sortedEmotions.length} émotions détectées - ${totalEmotions} commentaires analysés</div>
-        <div class="mt-1">
-            <span class="font-semibold">${nonNeutralPercentage}%</span> commentaires avec émotion spécifique, 
-            <span class="font-semibold">${neutralPercentage}%</span> commentaires neutres
+        <div>${sortedEmotions.length} types d'émotions détectées | ${totalEmotions} commentaires analysés au total</div>
+        <div class="mt-2 text-xs italic">
+            <div>• Pour les émotions spécifiques : pourcentage relatif aux ${totalNonNeutral} commentaires non neutres</div>
+            <div>• Pour les commentaires neutres : ${neutralCount} sur ${totalEmotions} (${neutralPercentage}% du total)</div>
         </div>
     `;
 
