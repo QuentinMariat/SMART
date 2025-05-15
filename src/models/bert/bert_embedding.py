@@ -26,17 +26,19 @@ class PositionalEmbedding(torch.nn.Module):
 
 class BERTEmbedding(torch.nn.Module):
     """
-    BERT Embedding which is consisted with under features
-        1. TokenEmbedding : normal embedding matrix
-        2. PositionalEmbedding : adding positional information using sin, cos
-        sum of all these features are output of BERTEmbedding
+    BERT Embedding:
+    1. Token Embedding
+    2. Positional Embedding
+    3. Segment Embedding (optional, default to 0)
+    Sum of the above + dropout
     """
-
-    def __init__(self, vocab_size, embed_size, seq_len=128, dropout=0.1):
+    def __init__(self, vocab_size, embed_size, seq_len=128, dropout=0.1, type_vocab_size=2):
         """
         :param vocab_size: total vocab size
-        :param embed_size: embedding size of token embedding
+        :param embed_size: embedding size for tokens, positions, and segments
+        :param seq_len: max length of input sequences
         :param dropout: dropout rate
+        :param type_vocab_size: number of segment types (typically 2)
         """
         super().__init__()
         self.embed_size = embed_size
@@ -49,11 +51,20 @@ class BERTEmbedding(torch.nn.Module):
         # padding_idx is not updated during training, remains as fixed pad (0)
         self.token = torch.nn.Embedding(vocab_size, embed_size, padding_idx=self.PAD_ID)
         self.position = PositionalEmbedding(d_model=embed_size, max_len=seq_len)
+        self.segment = torch.nn.Embedding(type_vocab_size, embed_size)
         self.dropout = torch.nn.Dropout(p=dropout)
-       
-    def forward(self, sequence):
-        x = self.token(sequence) + self.position(sequence)
-        return self.dropout(x)
+
+    def forward(self, input_ids, token_type_ids=None):
+        # input_ids: (batch_size, seq_len)
+        if token_type_ids is None:
+            token_type_ids = torch.zeros_like(input_ids)
+
+        token_embeddings = self.token(input_ids)
+        position_embeddings = self.position(input_ids)
+        segment_embeddings = self.segment(token_type_ids)
+
+        embeddings = token_embeddings + position_embeddings + segment_embeddings
+        return self.dropout(embeddings)
 
 class ManualEmbeddingTrainer:
     def __init__(self, vocab_size, embedding_dim, lr=0.1):
