@@ -5,51 +5,136 @@ import logging
 import torch
 import pandas as pd
 from datetime import datetime
+from transformers import AutoTokenizer, AutoModelForSequenceClassification
 
 logger = logging.getLogger(__name__)
 
-def analyze_youtube_comments_with_model(comments_file):
+# Ajouter le chemin racine au PYTHONPATH
+current_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.abspath(os.path.join(current_dir, '../../../'))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+    logger.info(f"Ajout de {project_root} au PYTHONPATH")
+
+# Import des modules nécessaires
+try:
+    from src.mvp.predict import predict_emotion
+    from src.config.settings import ID2LABEL, PREDICTION_PROB_THRESHOLD, TRAINING_ARGS, EMOTION_LABELS
+    logger.info("Modules importés avec succès")
+
+    from src.models.bert.bert import BERTForMultiLabelEmotion
+    logger.info("Modules importés avec succès")
+except ImportError as e:
+    logger.error(f"Erreur lors de l'importation des modules: {str(e)}")
+    raise ImportError(f"Impossible d'importer les modules nécessaires: {str(e)}")
+
+# Variables globales pour stocker le modèle et le tokenizer Stella
+stella_model = None
+stella_tokenizer = None
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
+def initialize_stella_model():
+    """
+    Initialise et charge le modèle Stella et son tokenizer.
+    Cette fonction doit être appelée au démarrage du serveur.
+    """
+    global stella_model, stella_tokenizer
+    
+    try:
+        model_path = os.path.join(project_root, 'results/stella_model/bert_multilabel.pt')
+        if not os.path.exists(model_path):
+            logger.error(f"Le modèle Stella n'existe pas à l'emplacement: {model_path}")
+            return False
+
+        # Charger le tokenizer
+        stella_tokenizer = AutoTokenizer.from_pretrained('roberta-base')
+        vocab_size = stella_tokenizer.vocab_size
+        logger.info(f"Taille du vocabulaire: {vocab_size}")
+
+        # Initialiser le modèle
+        stella_model = BERTForMultiLabelEmotion(
+            num_labels=len(EMOTION_LABELS),
+            vocab_size=vocab_size,
+            use_pretrained=True,
+            pretrained_model_name='roberta-base'
+        )
+        
+        # Charger les poids du modèle
+        stella_model.load_state_dict(torch.load(model_path, map_location=device))
+        stella_model.to(device)
+        stella_model.eval()
+        
+        logger.info("✅ Modèle Stella chargé avec succès")
+        return True
+        
+    except Exception as e:
+        logger.error(f"❌ Erreur lors de l'initialisation du modèle Stella: {str(e)}")
+        stella_model = None
+        stella_tokenizer = None
+        return False
+
+def predict_emotion_stella(text, device='cuda' if torch.cuda.is_available() else 'cpu'):
+    """
+    Prédit les émotions pour un texte donné en utilisant le modèle Stella.
+    Utilise le modèle global pré-chargé.
+    """
+    global stella_model, stella_tokenizer
+    
+    if stella_model is None or stella_tokenizer is None:
+        raise RuntimeError("Le modèle Stella n'est pas initialisé")
+
+    # Tokenisation
+    inputs = stella_tokenizer(
+        text,
+        padding='max_length',
+        truncation=True,
+        max_length=128,
+        return_tensors='pt'
+    )
+
+    input_ids = inputs['input_ids'].to(device)
+    attention_mask = inputs['attention_mask'].to(device)
+
+    with torch.no_grad():
+        outputs = stella_model(input_ids, attention_mask=attention_mask)
+        # Trouver l'indice de l'émotion avec la plus haute probabilité
+        max_prob_idx = torch.argmax(outputs, dim=1).item()
+            
+    return max_prob_idx
+
+def analyze_youtube_comments_with_model(comments_file, model_name="mvp"):
     """
     Analyse les commentaires YouTube avec le modèle de prédiction d'émotions
     et génère un nouveau CSV avec les labels prédits.
     
     Args:
         comments_file (str): Chemin vers le fichier CSV contenant les commentaires
+        model_name (str): Nom du modèle à utiliser ("mvp" ou "stella")
         
     Returns:
         dict: Statistiques d'analyse et chemin vers le nouveau fichier CSV généré
     """
     try:
-        # Obtenir le chemin racine du projet
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-        project_root = os.path.abspath(os.path.join(current_dir, '../../../'))
-        
-        # Vérifier si le modèle de prédiction est disponible
-        sys.path.append(project_root)
-        
-        # Import predict_emotion depuis le module predict.py
-        try:
-            from src.mvp.predict import predict_emotion
-            from src.config.settings import ID2LABEL, PREDICTION_PROB_THRESHOLD, TRAINING_ARGS
-        except ImportError:
-            logger.error("Impossible d'importer les modules nécessaires pour l'analyse des sentiments")
-            return {"error": "Modules de prédiction non disponibles"}
-        
-        # Chemin direct vers le modèle à la racine du projet
-        model_path = os.path.join(project_root, 'results/mvp_model')
-        
-        if not os.path.exists(model_path):
-            logger.warning(f"Le modèle n'existe pas à l'emplacement: {model_path}")
-            return {"error": "Modèle non disponible"}
-        
-        # Charger le modèle et le tokenizer
-        from transformers import AutoTokenizer, AutoModelForSequenceClassification
-        
-        logger.info(f"Chargement du modèle depuis {model_path}...")
-        tokenizer = AutoTokenizer.from_pretrained(model_path)
-        model = AutoModelForSequenceClassification.from_pretrained(model_path)
-        logger.info("Modèle chargé avec succès")
-        
+        # Pour le modèle Stella, vérifier qu'il est bien initialisé
+        if model_name == "stella":
+            if stella_model is None or stella_tokenizer is None:
+                return {"error": "Le modèle Stella n'est pas initialisé"}
+        else:
+            # Charger le modèle MVP
+            model_path = os.path.join(project_root, 'results/mvp_model')
+            if not os.path.exists(model_path):
+                logger.warning(f"Le modèle MVP n'existe pas à l'emplacement: {model_path}")
+                return {"error": "Modèle MVP non disponible"}
+            try:
+                tokenizer = AutoTokenizer.from_pretrained(model_path)
+                model = AutoModelForSequenceClassification.from_pretrained(model_path)
+                model.to(device)
+                model.eval()
+                logger.info("Modèle MVP chargé avec succès")
+            except Exception as e:
+                logger.error(f"Erreur lors du chargement du modèle MVP: {str(e)}")
+                return {"error": f"Erreur de chargement du modèle MVP: {str(e)}"}
+
         # Vérifier l'existence du fichier CSV d'entrée
         if not os.path.exists(comments_file):
             logger.error(f"Fichier de commentaires non trouvé: {comments_file}")
@@ -101,14 +186,19 @@ def analyze_youtube_comments_with_model(comments_file):
         
         # Analyser chaque commentaire
         logger.info(f"Début de l'analyse des commentaires avec un seuil de {threshold}...")
+        logger.info(f"Modèle utilisé: {model_name}")
         for idx, row in df.iterrows():
             try:
                 comment_text = str(row[text_column])
                 if pd.isna(comment_text) or comment_text.strip() == "":
                     continue  # Ignorer les commentaires vides
                 
-                # Prédire l'émotion pour ce commentaire avec le modèle
-                emotion = predict_emotion(comment_text, model, tokenizer, ID2LABEL, threshold)
+                # Prédire l'émotion pour ce commentaire avec le modèle approprié
+                if model_name == "stella":
+                    pred_labels = predict_emotion_stella(comment_text)
+                    emotion = EMOTION_LABELS[pred_labels]
+                else:
+                    emotion = predict_emotion(comment_text, model, tokenizer, ID2LABEL, threshold)
                 
                 # Enregistrer le label dans le DataFrame
                 df.at[idx, 'label'] = emotion
@@ -127,6 +217,7 @@ def analyze_youtube_comments_with_model(comments_file):
                     
             except Exception as e:
                 logger.warning(f"Erreur lors de l'analyse du commentaire {idx}: {e}")
+                pass
         
         # Enregistrer le DataFrame avec les labels dans un nouveau CSV
         df.to_csv(output_file, index=False)

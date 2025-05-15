@@ -1,6 +1,6 @@
 import torch
-from models.bert.bert_embedding import BERTEmbedding
-from models.bert.attention_layer import EncoderLayer
+from src.models.bert.bert_embedding import BERTEmbedding
+from src.models.bert.attention_layer import EncoderLayer
 from transformers import AutoModel, AutoConfig
 
 

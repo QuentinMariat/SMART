@@ -255,45 +255,50 @@
 
             <!-- Analyzer Page -->
             <div id="analyzer-page" class="page-transition hidden">
-                <!-- Analyzer page content remains the same -->
-                <div class="bg-white rounded-xl xl-md overflow-hidden mb-8">
-                    <div
-                        class="p-4 border-b border-gray-200 bg-[#8C1E7D] text-white"
-                    >
-                        <h2 class="text-xl font-bold flex items-center">
-                            <i class="fas fa-chart-pie mr-2"></i> Analyse de
-                            Sentiments
-                        </h2>
-                    </div>
-
-                    <div class="p-6">
-                        <div class="url-input-container mb-4">
-                            <i
-                                id="url-icon"
-                                class="fab fa-youtube platform-icon"
-                            ></i>
+                <div class="bg-white rounded-xl shadow-xl p-6 mb-8">
+                    <h2 class="text-2xl font-bold mb-6 text-gray-800">
+                        Analyseur de Sentiments
+                    </h2>
+                    
+                    <!-- URL Input Section -->
+                    <div class="mb-6">
+                        <div class="flex items-center space-x-4 mb-4">
+                            <i id="url-icon" class="fab fa-youtube text-2xl text-[#8C1E7D]"></i>
                             <input
                                 type="text"
                                 id="url-input"
-                                class="url-input w-full border border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-grey-500"
+                                class="flex-1 p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8C1E7D]"
                                 placeholder="Collez l'URL de la vidéo YouTube ici..."
                             />
                         </div>
-
-                        <div class="flex justify-between">
+                        
+                        <!-- Model Selection -->
+                        <div class="flex items-center space-x-4 mb-4">
+                            <label for="model-select" class="text-gray-700">
+                                <i class="fas fa-brain text-[#8C1E7D] mr-2"></i>
+                                Modèle d'analyse :
+                            </label>
+                            <select
+                                id="model-select"
+                                class="p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8C1E7D] bg-white"
+                            >
+                                <option value="mvp">Modèle MVP (Base)</option>
+                                <option value="stella">Modèle STELLA (Avancé)</option>
+                            </select>
+                        </div>
+                        
+                        <div class="flex space-x-4">
                             <button
                                 id="analyze-btn"
-                                class="bg-[#8C1E7D] text-white rounded-lg px-6 py-3 hover:bg-grey-700 transition duration-300 flex items-center"
+                                class="px-4 py-2 bg-[#8C1E7D] text-white rounded-lg hover:bg-[#7B1A6B] transition duration-300 flex items-center"
                             >
-                                <i class="fas fa-chart-bar mr-2"></i> Analyser
-                                les sentiments
+                                <i class="fas fa-chart-bar mr-2"></i> Analyser les sentiments
                             </button>
                             <button
                                 id="sample-btn"
-                                class="text-sm bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition duration-300 flex items-center"
+                                class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition duration-300"
                             >
-                                <i class="fas fa-lightbulb mr-2"></i> Exemple
-                                d'URL
+                                Exemple
                             </button>
                         </div>
                     </div>
