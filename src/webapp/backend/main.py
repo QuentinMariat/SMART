@@ -320,11 +320,15 @@ async def getCommentsFromYoutube(url):
         raise
 
 @app.get("/comments/{emotion}", response_model=None)
-async def get_comments_by_emotion(emotion: str):
+async def get_comments_by_emotion(emotion: str, video_id: str = None):
     """
     Récupère les commentaires pour une émotion spécifique à partir des fichiers CSV.
+    
+    Args:
+        emotion (str): L'émotion à rechercher dans les commentaires
+        video_id (str, optional): L'ID de la vidéo YouTube pour filtrer les fichiers spécifiques
     """
-    logger.info(f"Requête de commentaires pour l'émotion: {emotion}")
+    logger.info(f"Requête de commentaires pour l'émotion: {emotion}{' et la vidéo: ' + video_id if video_id else ''}")
     
     try:
         # Trouver les fichiers CSV dans le répertoire de sortie
@@ -335,9 +339,59 @@ async def get_comments_by_emotion(emotion: str):
             logger.warning("Aucun fichier CSV d'analyse trouvé")
             return {"comments": []}
         
-        # Utiliser le fichier le plus récent
-        csv_files.sort(reverse=True)
-        latest_csv = os.path.join(csv_dir, csv_files[0])
+        # Si un video_id est fourni, filtrer les fichiers pour cette vidéo
+        if video_id:
+            matching_files = [f for f in csv_files if f.startswith(f"youtube_comments_{video_id}_labeled")]
+            
+            if matching_files:
+                # Utiliser le fichier le plus récent pour cette vidéo
+                matching_files.sort(reverse=True)
+                latest_csv = os.path.join(csv_dir, matching_files[0])
+                logger.info(f"Utilisation du fichier le plus récent pour la vidéo {video_id}: {matching_files[0]}")
+            else:
+                # Si aucun fichier ne correspond, vérifier s'il existe des fichiers non-labelisés pour cette vidéo
+                unlabeled_file = os.path.join(csv_dir, f"youtube_comments_{video_id}.csv")
+                if os.path.exists(unlabeled_file):
+                    logger.warning(f"Aucun fichier labelisé trouvé pour la vidéo {video_id}, mais un fichier brut existe. Analyse non complétée?")
+                else:
+                    logger.warning(f"Aucun fichier trouvé pour la vidéo {video_id}")
+                
+                # Fallback: utiliser le fichier le plus récent (toutes vidéos confondues)
+                csv_files.sort(reverse=True)
+                latest_csv = os.path.join(csv_dir, csv_files[0])
+                logger.warning(f"Utilisation du fichier le plus récent comme fallback: {csv_files[0]}")
+        else:
+            # Si aucun video_id fourni, logique existante pour utiliser le plus récent
+            # Amélioration: récupérer l'ID vidéo le plus récent (premier fichier trié)
+            csv_files.sort(reverse=True)
+            
+            # Extraire l'ID vidéo du fichier le plus récent
+            most_recent_file = csv_files[0]
+            extracted_video_id = None
+            
+            # Extraction de l'ID vidéo du nom de fichier (youtube_comments_VIDEO_ID_labeled_...)
+            if most_recent_file.startswith("youtube_comments_"):
+                parts = most_recent_file.split("_labeled_")[0].split("youtube_comments_")
+                if len(parts) > 1:
+                    extracted_video_id = parts[1]
+                    logger.info(f"ID vidéo détecté dans le fichier le plus récent: {extracted_video_id}")
+            
+            # Filtrer les fichiers correspondant à cet ID vidéo si disponible
+            if extracted_video_id:
+                matching_files = [f for f in csv_files if f.startswith(f"youtube_comments_{extracted_video_id}_labeled")]
+                if matching_files:
+                    # Utiliser le fichier le plus récent pour cet ID vidéo
+                    matching_files.sort(reverse=True)
+                    latest_csv = os.path.join(csv_dir, matching_files[0])
+                    logger.info(f"Utilisation du fichier le plus récent pour la vidéo {extracted_video_id}: {matching_files[0]}")
+                else:
+                    # Si aucun fichier correspondant, utiliser le plus récent général
+                    latest_csv = os.path.join(csv_dir, csv_files[0])
+                    logger.warning(f"Aucun fichier ne correspond à l'ID vidéo {extracted_video_id}, utilisation du plus récent")
+            else:
+                # Si on ne peut pas extraire l'ID vidéo, utiliser le plus récent
+                latest_csv = os.path.join(csv_dir, csv_files[0])
+                logger.warning("Impossible de déterminer l'ID vidéo, utilisation du fichier le plus récent")
         
         logger.info(f"Lecture des commentaires depuis: {latest_csv}")
         
