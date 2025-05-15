@@ -604,8 +604,20 @@ function renderSimpleEmotionChart(emotionCounts) {
         const colorHex = emotionColors[emotion] || "#9CA3AF";
 
         const barContainer = document.createElement("div");
-        barContainer.className = "mb-3";
+        barContainer.className =
+            "mb-3 hover:bg-gray-50 rounded p-1 transition-colors duration-200";
         barContainer.dataset.emotion = emotion; // Ajouter l'attribut de données
+
+        // Rendre la barre cliquable
+        barContainer.style.cursor = "pointer";
+        barContainer.addEventListener("click", () => {
+            // Appeler la fonction de popup pour cette émotion
+            showCommentsPopupForEmotion(emotion);
+        });
+
+        // Ajouter un indice visuel que c'est cliquable
+        barContainer.title =
+            "Cliquez pour voir les commentaires avec cette émotion";
 
         // En-tête avec nom et nombre
         const header = document.createElement("div");
@@ -828,4 +840,238 @@ function updateCommentFilters(emotions, translations) {
     selectContainer.appendChild(selectLabel);
     selectContainer.appendChild(select);
     filterContainer.appendChild(selectContainer);
+}
+
+// Nouvelle fonction pour afficher une popup avec les commentaires d'une émotion spécifique
+function showCommentsPopupForEmotion(emotion) {
+    // Créer l'élément de fond de la popup
+    const overlay = document.createElement("div");
+    overlay.className =
+        "fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center";
+    overlay.id = "comments-popup-overlay";
+
+    // Créer la popup
+    const popup = document.createElement("div");
+    popup.className =
+        "bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[80vh] flex flex-col";
+
+    // En-tête de la popup
+    const header = document.createElement("div");
+    header.className = "flex items-center justify-between px-6 py-4 border-b";
+
+    // Titre avec traduction française de l'émotion
+    const emotionTranslations = {
+        joy: "Joie",
+        admiration: "Admiration",
+        amusement: "Amusement",
+        excitement: "Excitation",
+        gratitude: "Gratitude",
+        love: "Amour",
+        optimism: "Optimisme",
+        pride: "Fierté",
+        relief: "Soulagement",
+        approval: "Approbation",
+        caring: "Bienveillance",
+        surprise: "Surprise",
+        curiosity: "Curiosité",
+        realization: "Réalisation",
+        desire: "Désir",
+        anger: "Colère",
+        annoyance: "Agacement",
+        disappointment: "Déception",
+        disapproval: "Désapprobation",
+        disgust: "Dégoût",
+        embarrassment: "Embarras",
+        fear: "Peur",
+        grief: "Chagrin",
+        remorse: "Remords",
+        sadness: "Tristesse",
+        confusion: "Confusion",
+        nervousness: "Nervosité",
+        neutral: "Neutre"
+    };
+
+    const emotionName = emotionTranslations[emotion] || emotion;
+
+    const title = document.createElement("h3");
+    title.className = "text-xl font-bold text-gray-800";
+    title.textContent = `Commentaires classés comme "${emotionName}"`;
+
+    // Bouton de fermeture
+    const closeBtn = document.createElement("button");
+    closeBtn.className = "text-gray-500 hover:text-gray-700 focus:outline-none";
+    closeBtn.innerHTML = '<i class="fas fa-times"></i>';
+    closeBtn.onclick = () => {
+        document.body.removeChild(overlay);
+    };
+
+    header.appendChild(title);
+    header.appendChild(closeBtn);
+    popup.appendChild(header);
+
+    // Corps de la popup avec loading initial
+    const body = document.createElement("div");
+    body.className = "p-6 overflow-y-auto flex-grow";
+
+    // Message de chargement
+    const loadingDiv = document.createElement("div");
+    loadingDiv.className = "flex flex-col items-center justify-center p-12";
+    loadingDiv.innerHTML = `
+        <div class="animate-spin text-indigo-600 text-4xl mb-4">
+            <i class="fas fa-sync-alt"></i>
+        </div>
+        <p class="text-gray-700">Chargement des commentaires...</p>
+    `;
+    body.appendChild(loadingDiv);
+
+    popup.appendChild(body);
+
+    // Pied de page de la popup
+    const footer = document.createElement("div");
+    footer.className =
+        "px-6 py-4 border-t bg-gray-50 rounded-b-lg flex justify-between items-center";
+
+    const commentCount = document.createElement("div");
+    commentCount.className = "text-sm text-gray-600";
+    commentCount.textContent = "Chargement...";
+
+    const closeButton = document.createElement("button");
+    closeButton.className =
+        "px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300";
+    closeButton.textContent = "Fermer";
+    closeButton.onclick = () => {
+        document.body.removeChild(overlay);
+    };
+
+    footer.appendChild(commentCount);
+    footer.appendChild(closeButton);
+    popup.appendChild(footer);
+
+    overlay.appendChild(popup);
+    document.body.appendChild(overlay);
+
+    // Fermer la popup en cliquant à l'extérieur
+    overlay.addEventListener("click", e => {
+        if (e.target === overlay) {
+            document.body.removeChild(overlay);
+        }
+    });
+
+    // Empêcher la propagation du clic depuis l'intérieur de la popup
+    popup.addEventListener("click", e => {
+        e.stopPropagation();
+    });
+
+    // Faire une requête API pour obtenir les commentaires de cette émotion
+    fetchCommentsForEmotion(emotion)
+        .then(comments => {
+            // Mettre à jour le contenu de la popup avec les commentaires
+            updatePopupWithComments(body, comments, commentCount);
+        })
+        .catch(error => {
+            // Afficher un message d'erreur
+            body.innerHTML = `
+            <div class="text-center p-8">
+                <div class="text-red-500 text-4xl mb-4">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                <h3 class="text-xl font-semibold text-red-700 mb-2">Erreur</h3>
+                <p class="text-gray-700">${
+                    error.message || "Impossible de récupérer les commentaires"
+                }</p>
+            </div>
+        `;
+            commentCount.textContent = "0 commentaire";
+        });
+}
+
+// Fonction pour récupérer les commentaires d'une émotion spécifique
+async function fetchCommentsForEmotion(emotion) {
+    try {
+        const response = await fetch(
+            `http://localhost:8000/comments/${emotion}`,
+            {
+                method: "GET",
+                headers: {
+                    "Content-Type": "application/json"
+                }
+            }
+        );
+
+        if (!response.ok) {
+            throw new Error(`Erreur API: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        return data.comments || [];
+    } catch (error) {
+        console.error(
+            `Erreur lors de la récupération des commentaires pour ${emotion}:`,
+            error
+        );
+        throw error;
+    }
+}
+
+// Fonction pour mettre à jour la popup avec les commentaires
+function updatePopupWithComments(bodyElement, comments, countElement) {
+    if (comments.length === 0) {
+        bodyElement.innerHTML = `
+            <div class="text-center p-8">
+                <p class="text-gray-500">Aucun commentaire disponible pour cette émotion.</p>
+                <p class="text-gray-400 text-sm mt-4">Les commentaires sont classés selon le modèle d'analyse de sentiments.</p>
+            </div>
+        `;
+        countElement.textContent = "0 commentaire";
+        return;
+    }
+
+    // Liste des commentaires
+    const commentsList = document.createElement("div");
+    commentsList.className = "space-y-4";
+
+    comments.forEach(comment => {
+        const commentItem = document.createElement("div");
+        commentItem.className = "p-4 border border-gray-200 rounded-lg";
+
+        const commentText = document.createElement("p");
+        commentText.className = "text-gray-800";
+        commentText.textContent = comment.text;
+
+        const commentMeta = document.createElement("div");
+        commentMeta.className =
+            "mt-2 text-sm text-gray-500 flex justify-between items-center";
+
+        let metaHtml = "";
+
+        // Afficher la probabilité si disponible
+        if (comment.hasOwnProperty("probability")) {
+            metaHtml += `<span>Probabilité: ${(
+                comment.probability * 100
+            ).toFixed(1)}%</span>`;
+        }
+
+        commentMeta.innerHTML = metaHtml;
+
+        // Afficher l'ID si disponible
+        if (comment.hasOwnProperty("id")) {
+            const idSpan = document.createElement("span");
+            idSpan.textContent = `#${comment.id}`;
+            idSpan.className = "text-gray-400";
+            commentMeta.appendChild(idSpan);
+        }
+
+        commentItem.appendChild(commentText);
+        commentItem.appendChild(commentMeta);
+        commentsList.appendChild(commentItem);
+    });
+
+    // Vider le contenu actuel et ajouter la liste
+    bodyElement.innerHTML = "";
+    bodyElement.appendChild(commentsList);
+
+    // Mettre à jour le compteur
+    countElement.textContent = `${comments.length} commentaire${
+        comments.length > 1 ? "s" : ""
+    }`;
 }
