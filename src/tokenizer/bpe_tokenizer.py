@@ -9,7 +9,7 @@ class BPETokenizer:
     Custom BPE tokenizer compatible with HuggingFace-style interface.
     Provides `train`, `encode`, `decode`, `get_tokens_with_values`, `__call__`, `save`, and `load`.
     """
-    def __init__(self, vocab_size=1000):
+    def __init__(self, vocab_size=7325):
         self.vocab_size = vocab_size
         self.vocab = {}
         self.merges = []

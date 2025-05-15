@@ -48,15 +48,15 @@ def main():
     corpus = load_corpus_from_csv(csv_path)
     logger.info(f"{len(corpus)} textes chargés depuis le CSV.")
     
-    
+    """
     # Entraîner le tokenizer
     bpe.train(corpus)
     bpe.save(tokenizer_save_path)
     logger.info("Tokenizer entraîné et sauvegardé.")
-    
+    """
     
     # Charger le tokenizer depuis le fichier JSON
-    bpe_save_path = "data/tokenizer.json"
+    bpe_save_path = "data/tokenizer_files/tokenizer.json"
     if Path(bpe_save_path).exists():
         bpe.load(bpe_save_path)
         logger.info("Tokenizer chargé depuis le fichier JSON.")
@@ -67,7 +67,7 @@ def main():
 
     # Test rapide
     logger.info("Testing bpe...")
-    test_text = "welcome Quentin, welcome everyone!"
+    test_text = "welcome Quentin. welcome everyone!"
     test_text = normalize_text(test_text)
     encoded_text = bpe.encode(test_text, max_length=128)
     decoded_text = bpe.decode(encoded_text)
