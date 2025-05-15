@@ -2,7 +2,6 @@
 function initAnalyzer() {
     // DOM Elements
     const youtubeBtn = document.getElementById("youtube-btn");
-    const twitterBtn = document.getElementById("twitter-btn");
     const urlIcon = document.getElementById("url-icon");
     const urlInput = document.getElementById("url-input");
     const analyzeBtn = document.getElementById("analyze-btn");
@@ -18,32 +17,14 @@ function initAnalyzer() {
 
     // Sample URLs
     const sampleYoutubeUrl = "https://www.youtube.com/watch?v=dQw4w9WgXcQ";
-    const sampleTwitterUrl = "https://twitter.com/elonmusk/status/1234567890";
 
-    // Current platform (default: YouTube)
-    let currentPlatform = "youtube";
-
-    // Platform selection
-    youtubeBtn?.addEventListener("click", () => {
-        currentPlatform = "youtube";
-        youtubeBtn.classList.add("active");
-        twitterBtn.classList.remove("active");
-        urlIcon.className = "fab fa-youtube platform-icon";
-        urlInput.placeholder = "Paste YouTube video URL here...";
-    });
-
-    twitterBtn?.addEventListener("click", () => {
-        currentPlatform = "twitter";
-        twitterBtn.classList.add("active");
-        youtubeBtn.classList.remove("active");
-        urlIcon.className = "fab fa-twitter platform-icon";
-        urlInput.placeholder = "Paste Twitter/X post URL here...";
-    });
+    // Configurer l'interface pour YouTube uniquement
+    urlIcon.className = "fab fa-youtube platform-icon";
+    urlInput.placeholder = "Paste YouTube video URL here...";
 
     // Sample URL button
     sampleBtn?.addEventListener("click", () => {
-        urlInput.value =
-            currentPlatform === "youtube" ? sampleYoutubeUrl : sampleTwitterUrl;
+        urlInput.value = sampleYoutubeUrl;
     });
 
     // Analyze button
@@ -56,16 +37,8 @@ function initAnalyzer() {
         }
 
         // Validate URL format
-        if (
-            currentPlatform === "youtube" &&
-            !url.includes("youtube.com/watch")
-        ) {
+        if (!url.includes("youtube.com/watch")) {
             alert("Merci d'entrer une URL de vidéo YouTube valide");
-            return;
-        }
-
-        if (currentPlatform === "twitter" && !url.includes("twitter.com/")) {
-            alert("Merci d'entrer une URL de post Twitter valide");
             return;
         }
 
@@ -98,7 +71,7 @@ function initAnalyzer() {
         // Effectuer l'appel API avec un timeout pour l'interface utilisateur
         setTimeout(async () => {
             try {
-                const data = await fetchAnalysisFromAPI(url, currentPlatform);
+                const data = await fetchAnalysisFromAPI(url);
                 console.log("Données reçues avec succès:", data);
                 // Reset button
                 analyzeBtn.innerHTML =
@@ -117,11 +90,8 @@ function initAnalyzer() {
     // car ils seront créés dynamiquement dans updateCommentFilters
 }
 
-async function fetchAnalysisFromAPI(url, platform) {
-    const endpoint =
-        platform === "youtube"
-            ? "http://localhost:8000/analyze/youtube"
-            : "http://localhost:8000/analyze/twitter";
+async function fetchAnalysisFromAPI(url) {
+    const endpoint = "http://localhost:8000/analyze/youtube";
 
     try {
         // Définir un timeout pour la requête
@@ -274,8 +244,8 @@ async function fetchAnalysisFromAPI(url, platform) {
 
                 const items = [
                     "Le serveur backend est en cours d'exécution",
-                    "L'URL de la vidéo/post est correcte",
-                    "La vidéo/post est accessible publiquement"
+                    "L'URL de la vidéo est correcte",
+                    "La vidéo est accessible publiquement"
                 ];
 
                 items.forEach(item => {
