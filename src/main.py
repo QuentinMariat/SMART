@@ -7,7 +7,7 @@ import torch
 from torch.utils.data import DataLoader
 from transformers import AutoModel
 from src.models.bert.bert_dataset import WikipediaMLMDataset
-from src.data.data_handler import preprocess_dataset, preprocess_wikipedia_mlm, load_tokenizer, loading_dataset
+from src.data.data_handler import load_and_preprocess_data, preprocess_dataset, preprocess_wikipedia_mlm, load_tokenizer, loading_dataset
 from models.bert.bert_trainer import BERTTrainer  # ta classe Trainer existante
 from models.bert.bert import BERTForMultiLabelEmotion, BERTForMLMPretraining
 from transformers import AutoTokenizer
