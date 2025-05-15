@@ -40,6 +40,7 @@ app.add_middleware(
 # === URL input schema ===
 class URLRequest(BaseModel):
     url: str
+    model: str = "mvp"  # Par défaut, utilise le modèle MVP
 
 # === Normalized Comment schema ===
 class NormalizedComment(BaseModel):
@@ -64,11 +65,11 @@ class DetailedAnalysisResponse(BaseModel):
     comments: List[Comment]
     emotion_counts: Optional[dict] = None  # Ajout d'un champ optional pour les émotions
 
-async def generate_analysis(url) -> DetailedAnalysisResponse:
+async def generate_analysis(url, model_name="mvp") -> DetailedAnalysisResponse:
     """
     Génère une analyse de sentiment à partir des commentaires YouTube.
     """
-    logger.debug("Démarrage de l'analyse des commentaires YouTube")
+    logger.debug(f"Démarrage de l'analyse des commentaires YouTube avec le modèle {model_name}")
 
     try:
         # Récupérer les commentaires YouTube
@@ -95,9 +96,9 @@ async def generate_analysis(url) -> DetailedAnalysisResponse:
         else:
             logger.warning(f"Fichier CSV non trouvé: {csv_file_path}")
 
-        # Analyser les commentaires avec le modèle
+        # Analyser les commentaires avec le modèle spécifié
         try:
-            analysis_results = analyze_youtube_comments_with_model(csv_file_path)
+            analysis_results = analyze_youtube_comments_with_model(csv_file_path, model_name)
             
             if "error" in analysis_results:
                 logger.error(f"Erreur d'analyse: {analysis_results['error']}")
@@ -231,14 +232,14 @@ async def exception_handler(request: Request, exc: Exception):
 # === Endpoint for YouTube analysis ===
 @app.post("/analyze/youtube", response_model=DetailedAnalysisResponse)
 async def analyze_youtube(request: URLRequest):
-    logger.info(f"YouTube analysis requested for URL: {request.url}")
+    """
+    Analyse les commentaires d'une vidéo YouTube et retourne une analyse détaillée.
+    """
     try:
-        result = await generate_analysis(request.url)
-        logger.info("YouTube analysis completed successfully")
-        return result
+        return await generate_analysis(request.url, request.model)
     except Exception as e:
-        logger.error(f"Error during YouTube analysis: {str(e)}", exc_info=True)
-        raise
+        logger.error(f"Erreur lors de l'analyse YouTube: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 # === Définition du modèle pour les commentaires normalisés (pour une API future) ===
 class NormalizedCommentsResponse(BaseModel):

@@ -6,6 +6,7 @@ function initAnalyzer() {
     const urlInput = document.getElementById("url-input");
     const analyzeBtn = document.getElementById("analyze-btn");
     const sampleBtn = document.getElementById("sample-btn");
+    const modelSelect = document.getElementById("model-select");
     const resultsContainer = document.getElementById("results-container");
     const commentCount = document.getElementById("comment-count");
     const commentsContainer = document.getElementById("comments-container");
@@ -144,6 +145,8 @@ function initAnalyzer() {
 
 async function fetchAnalysisFromAPI(url) {
     const endpoint = "http://localhost:8000/analyze/youtube";
+    const modelSelect = document.getElementById("model-select");
+    const selectedModel = modelSelect ? modelSelect.value : "mvp";
 
     try {
         // Définir un timeout pour la requête
@@ -155,7 +158,10 @@ async function fetchAnalysisFromAPI(url) {
             headers: {
                 "Content-Type": "application/json"
             },
-            body: JSON.stringify({ url }),
+            body: JSON.stringify({ 
+                url,
+                model: selectedModel
+            }),
             signal: controller.signal
         });
 
@@ -175,6 +181,7 @@ async function fetchAnalysisFromAPI(url) {
 
         // Log détaillé des données reçues pour le débogage
         console.log("Données complètes reçues du backend:", data);
+        console.log("Modèle utilisé:", selectedModel);
 
         // Vérifier si emotion_counts est présent dans la réponse API
         if (!data.emotion_counts) {
