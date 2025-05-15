@@ -3,7 +3,7 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Analyseur de Sentiment</title>
+        <title>Analyseur de Sentiments</title>
 
         <!-- External dependencies -->
         <script src="https://cdn.tailwindcss.com"></script>
@@ -38,12 +38,12 @@
         }
 
         .attention-head {
-            fill: #6366f1;
+            fill: grey;
             opacity: 0.8;
         }
 
         .attention-line {
-            stroke: #8b5cf6;
+            stroke: grey;
             stroke-width: 2;
             stroke-dasharray: 5, 5;
         }
@@ -77,18 +77,18 @@
             margin: 1rem 0;
         }
     </style>
-    <body class="bg-gray-50 font-sans">
+    <body class="bg-gray-300 font-sans">
         <!-- Navigation -->
-        <nav class="bg-indigo-600 text-white shadow-lg">
+        <nav class="bg-[#8C1E7D] text-white shadow-xl">
             <div class="max-w-6xl mx-auto px-4">
                 <div class="flex justify-between items-center py-4">
                     <div class="flex items-center space-x-4">
                         <i class="fas fa-robot text-2xl"></i>
                         <button
                             onclick="showPage('home')"
-                            class="font-bold text-xl hover:text-indigo-200 transition duration-300"
+                            class="font-bold text-xl hover:text- transition duration-300"
                         >
-                            Analyseur de Sentiment
+                            Analyseur de Sentiments
                         </button>
                     </div>
                     <div class="hidden md:flex items-center space-x-8">
@@ -111,7 +111,7 @@
                 </div>
             </div>
             <!-- Mobile menu -->
-            <div class="md:hidden hidden bg-indigo-700" id="mobile-menu">
+            <div class="md:hidden hidden bg-grey-700" id="mobile-menu">
                 <div class="px-4 py-2 flex flex-col space-y-2">
                     <button data-page="analyzer" class="nav-link-mobile">
                         Analyseur
@@ -132,7 +132,7 @@
             <div id="home-page" class="page-transition">
                 <!-- Home page content remains the same -->
                 <div
-                    class="bg-white rounded-xl shadow-md overflow-hidden p-6 mb-8"
+                    class="bg-white rounded-xl shadow-xl overflow-hidden p-6 mb-8"
                 >
                     <div class="md:flex">
                         <div class="md:flex-shrink-0">
@@ -144,14 +144,14 @@
                         </div>
                         <div class="p-8">
                             <div
-                                class="uppercase tracking-wide text-sm text-indigo-600 font-semibold"
+                                class="uppercase tracking-wide text-sm text- font-semibold"
                             >
                                 Bienvenue sur
                             </div>
                             <h1
                                 class="mt-2 text-3xl font-extrabold text-gray-900"
                             >
-                                Analyseur de Sentiment
+                                Analyseur de Sentiments
                             </h1>
                             <p class="mt-3 text-gray-600">
                                 Notre outil avancé alimenté par l'IA analyse le
@@ -165,7 +165,7 @@
                             <div class="mt-6">
                                 <button
                                     onclick="showPage('analyzer')"
-                                    class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition duration-300 flex items-center"
+                                    class="px-4 py-2 bg-[#8C1E7D] text-white rounded-md hover:bg-hrey-700 transition duration-300 flex items-center"
                                 >
                                     <i class="fas fa-play mr-2"></i> Essayer
                                     l'Analyseur
@@ -176,8 +176,8 @@
                 </div>
 
                 <div class="grid md:grid-cols-3 gap-6 mb-8">
-                    <div class="bg-white p-6 rounded-lg shadow-md">
-                        <div class="text-indigo-600 mb-4">
+                    <div class="bg-white p-6 rounded-lg shadow-xl">
+                        <div class="text-[#8C1E7D] mb-4">
                             <i class="fab fa-youtube text-3xl"></i>
                         </div>
                         <h3 class="text-xl font-bold mb-2">Analyse YouTube</h3>
@@ -187,8 +187,8 @@
                             public.
                         </p>
                     </div>
-                    <div class="bg-white p-6 rounded-lg shadow-md">
-                        <div class="text-indigo-600 mb-4">
+                    <div class="bg-white p-6 rounded-lg shadow-xl">
+                        <div class="text-[#8C1E7D] mb-4">
                             <i class="fab fa-twitter text-3xl"></i>
                         </div>
                         <h3 class="text-xl font-bold mb-2">
@@ -199,28 +199,27 @@
                             l'opinion publique et l'engagement.
                         </p>
                     </div>
-                    <div class="bg-white p-6 rounded-lg shadow-md">
-                        <div class="text-indigo-600 mb-4">
+                    <div class="bg-white p-6 rounded-lg shadow-xl">
+                        <div class="text-[#8C1E7D] mb-4">
                             <i class="fas fa-chart-bar text-3xl"></i>
                         </div>
                         <h3 class="text-xl font-bold mb-2">
                             Rapports Détaillés
                         </h3>
                         <p class="text-gray-600">
-                            Obtenez des analyses de sentiment complètes avec
-                            visualisations.
+                            Obtenez des analyses de sentiments complètes.
                         </p>
                     </div>
                 </div>
 
-                <div class="bg-white rounded-xl shadow-md p-6">
+                <div class="bg-white rounded-xl shadow-xl p-6">
                     <h2 class="text-2xl font-bold mb-4">Comment ça marche</h2>
                     <div class="space-y-6">
                         <div class="flex items-start">
                             <div
-                                class="flex-shrink-0 bg-indigo-100 rounded-full p-2"
+                                class="flex-shrink-0 bg-grey-100 rounded-full p-2"
                             >
-                                <span class="text-indigo-600 font-bold">1</span>
+                                <span class="text-[#8C1E7D] font-bold">1</span>
                             </div>
                             <div class="ml-4">
                                 <h3 class="font-semibold">Collez une URL</h3>
@@ -232,9 +231,9 @@
                         </div>
                         <div class="flex items-start">
                             <div
-                                class="flex-shrink-0 bg-indigo-100 rounded-full p-2"
+                                class="flex-shrink-0 bg-grey-100 rounded-full p-2"
                             >
-                                <span class="text-indigo-600 font-bold">2</span>
+                                <span class="text-[#8C1E7D] font-bold">2</span>
                             </div>
                             <div class="ml-4">
                                 <h3 class="font-semibold">Traitement IA</h3>
@@ -246,16 +245,16 @@
                         </div>
                         <div class="flex items-start">
                             <div
-                                class="flex-shrink-0 bg-indigo-100 rounded-full p-2"
+                                class="flex-shrink-0 bg-grey-100 rounded-full p-2"
                             >
-                                <span class="text-indigo-600 font-bold">3</span>
+                                <span class="text-[#8C1E7D] font-bold">3</span>
                             </div>
                             <div class="ml-4">
                                 <h3 class="font-semibold">
                                     Obtenez des Insights
                                 </h3>
                                 <p class="text-gray-600 mt-1">
-                                    Recevez un rapport d'analyse de sentiment
+                                    Recevez un rapport d'analyse de sentiments
                                     détaillé avec les tendances.
                                 </p>
                             </div>
@@ -267,13 +266,13 @@
             <!-- Analyzer Page -->
             <div id="analyzer-page" class="page-transition hidden">
                 <!-- Analyzer page content remains the same -->
-                <div class="bg-white rounded-xl shadow-md overflow-hidden mb-8">
+                <div class="bg-white rounded-xl xl-md overflow-hidden mb-8">
                     <div
-                        class="p-4 border-b border-gray-200 bg-indigo-600 text-white"
+                        class="p-4 border-b border-gray-200 bg-[#8C1E7D] text-white"
                     >
                         <h2 class="text-xl font-bold flex items-center">
                             <i class="fas fa-chart-pie mr-2"></i> Analyse de
-                            Sentiment
+                            Sentiments
                         </h2>
                     </div>
 
@@ -281,13 +280,13 @@
                         <div class="flex space-x-2 mb-4">
                             <button
                                 id="youtube-btn"
-                                class="platform-selector active px-4 py-2 rounded-lg flex items-center"
+                                class="platform-selector active px-4 py-2 rounded-lg flex items-center border border-gray-400"
                             >
                                 <i class="fab fa-youtube mr-2"></i> YouTube
                             </button>
                             <button
                                 id="twitter-btn"
-                                class="platform-selector px-4 py-2 rounded-lg flex items-center"
+                                class="platform-selector px-4 py-2 rounded-lg flex items-center border border-gray-400"
                             >
                                 <i class="fab fa-twitter mr-2"></i> Twitter/X
                             </button>
@@ -301,7 +300,7 @@
                             <input
                                 type="text"
                                 id="url-input"
-                                class="url-input w-full border border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                class="url-input w-full border border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-grey-500"
                                 placeholder="Collez l'URL de la vidéo YouTube ici..."
                             />
                         </div>
@@ -309,17 +308,16 @@
                         <div class="flex justify-between">
                             <button
                                 id="analyze-btn"
-                                class="bg-indigo-600 text-white rounded-lg px-6 py-3 hover:bg-indigo-700 transition duration-300 flex items-center"
+                                class="bg-[#8C1E7D] text-white rounded-lg px-6 py-3 hover:bg-grey-700 transition duration-300 flex items-center"
                             >
                                 <i class="fas fa-chart-bar mr-2"></i> Analyser
-                                le Sentiment
+                                les sentiments
                             </button>
                             <button
                                 id="sample-btn"
                                 class="text-sm bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition duration-300 flex items-center"
                             >
-                                <i class="fas fa-lightbulb mr-2"></i> URL
-                                Exemple
+                                <i class="fas fa-lightbulb mr-2"></i> Exemple d'URL
                             </button>
                         </div>
                     </div>
@@ -344,7 +342,7 @@
 
                         <div class="grid md:grid-cols-3 gap-4 mb-6">
                             <div
-                                class="sentiment-summary bg-white p-4 rounded-lg shadow-sm border border-gray-200"
+                                class="sentiment-summary bg-white p-4 rounded-lg shadow-xl border border-gray-200"
                             >
                                 <div
                                     class="flex justify-between items-center mb-2"
@@ -367,7 +365,7 @@
                                 </div>
                             </div>
                             <div
-                                class="sentiment-summary bg-white p-4 rounded-lg shadow-sm border border-gray-200"
+                                class="sentiment-summary bg-white p-4 rounded-lg shadow-xl border border-gray-200"
                             >
                                 <div
                                     class="flex justify-between items-center mb-2"
@@ -388,7 +386,7 @@
                                 </div>
                             </div>
                             <div
-                                class="sentiment-summary bg-white p-4 rounded-lg shadow-sm border border-gray-200"
+                                class="sentiment-summary bg-white p-4 rounded-lg shadow-xl border border-gray-200"
                             >
                                 <div
                                     class="flex justify-between items-center mb-2"
@@ -412,10 +410,7 @@
                             </div>
                         </div>
 
-                        <div class="bg-white rounded-lg shadow-sm p-4 mb-6">
-                            <h4 class="font-semibold mb-3">
-                                Émotions Principales Détectées
-                            </h4>
+                        <div class="bg-white rounded-lg shadow-xl p-4 mb-6">
                             <div
                                 id="emotions-histogram"
                                 class="py-4 bg-white rounded"
@@ -425,7 +420,7 @@
                                     class="flex flex-col items-center justify-center h-64"
                                 >
                                     <svg
-                                        class="animate-spin h-8 w-8 text-indigo-500 mb-4"
+                                        class="animate-spin h-8 w-8 text-grey-500 mb-4"
                                         xmlns="http://www.w3.org/2000/svg"
                                         fill="none"
                                         viewBox="0 0 24 24"
@@ -456,7 +451,7 @@
                             </div>
                         </div>
 
-                        <div class="bg-white rounded-lg shadow-sm p-4">
+                        <div class="bg-white rounded-lg shadow-xl p-4">
                             <div class="flex justify-between items-center mb-3">
                                 <h4 class="font-semibold">
                                     Commentaires Principaux
@@ -493,13 +488,13 @@
                     </div>
                 </div>
 
-                <div class="bg-white rounded-xl shadow-md p-6">
+                <div class="bg-white rounded-xl shadow-xl p-6">
                     <h2 class="text-xl font-bold mb-4">
                         Comment utiliser l'analyseur
                     </h2>
                     <div class="grid md:grid-cols-2 gap-4">
-                        <div class="p-4 rounded-lg bg-indigo-50">
-                            <div class="font-bold text-indigo-800 mb-2">
+                        <div class="p-4 rounded-lg bg-grey-50">
+                            <div class="font-bold text-grey-800 mb-2">
                                 1. Collez une URL
                             </div>
                             <p class="text-gray-700">
@@ -508,8 +503,8 @@
                                 commentaires.
                             </p>
                         </div>
-                        <div class="p-4 rounded-lg bg-indigo-50">
-                            <div class="font-bold text-indigo-800 mb-2">
+                        <div class="p-4 rounded-lg bg-grey-50">
+                            <div class="font-bold text-grey-800 mb-2">
                                 2. Analysez les sentiments
                             </div>
                             <p class="text-gray-700">
@@ -524,14 +519,14 @@
 
             <!-- Technical Page -->
             <div id="technical-page" class="page-transition hidden">
-                <div class="bg-white rounded-xl shadow-md p-6 mb-8">
+                <div class="bg-white rounded-xl shadow-xl p-6 mb-8">
                     <h1 class="text-3xl font-bold mb-6">
-                        Comment Nous Analysons le Sentiment
+                        Comment Analysons Nous Les Sentiments ?
                     </h1>
 
                     <div class="prose max-w-none">
                         <p class="mb-4">
-                            Notre analyseur de sentiment est alimenté par des
+                            Notre analyseur de sentiments est alimenté par des
                             modèles basés sur les transformers, la même
                             architecture utilisée par les modèles de langage de
                             pointe comme BERT et GPT. Ces modèles excellent dans
@@ -540,14 +535,69 @@
                         </p>
 
                         <h2 class="text-2xl font-bold mt-8 mb-4">
-                            Architecture Transformer
+                            1ère étape : La tokenisation
                         </h2>
+
+                        <p class="mb-4">
+                            La première étape de l'analyse consiste à
+                            transformer le texte brut en une séquence de "tokens".
+                            Nous utilisons une méthode de tokenisation, appelé BPE, qui divise les
+                            mots en sous-mots, en fonction de leur fréquence
+                            d'apparition. 
+                            Chaque sous-mot est converti en un identifiant
+                            numérique unique. Cela permet au modèle de traiter le
+                            texte de manière efficace.
+                        </p>
+
+                        <img
+                            src="https://miro.medium.com/v2/resize:fit:518/1*W94_K5Mx7BanqeHfEs0TKg.png"
+                            alt="Tokenisation"
+                            class="w-full h-auto rounded-lg shadow-lg mb-4 mx-auto"
+                            style="max-width: 600px"
+                        />
+
+
+                        <h2 class="text-2xl font-bold mt-8 mb-4">
+                            2ème étape : L'embedding
+                        </h2>
+
+                        <p class="mb-4">
+                            Une fois le texte "tokenisé", chaque token est
+                            converti en un vecteur d'embedding. Ces vecteurs
+                            capturent la signification sémantique des mots et
+                            permettent au modèle de comprendre les relations
+                            contextuelles entre eux.
+                        </p>
+
+                        <img
+                            src="https://miro.medium.com/v2/resize:fit:1400/1*-LJr59LJCTLL4YJodiJsVA.png"
+                            alt="embedding"
+                            class="w-full h-auto rounded-lg shadow-lg mb-4 mx-auto"
+                            style="max-width: 600px"
+                        />
+
+                        <h2 class="text-2xl font-bold mt-8 mb-4">
+                            3ème étape: le transformer
+                        </h2>
+
+                        <p class="mb-4">
+                            Le modèle utilise une architecture de "transformer".
+                            Le Transformer est un modèle qui lit un texte en entier et comprend comment les mots sont liés entre eux.
+                            Grâce à un mécanisme appelé attention, il peut se concentrer sur les mots importants, peu importe où ils
+                             se trouvent dans la phrase. Par exemple, il peut comprendre que dans "Le chien que Paul a vu courait",
+                            "chien" est celui qui court, même si le mot est loin du verbe.
+
+                            L’encodeur du Transformer traite tout le texte en parallèle,
+                             ce qui le rend rapide et efficace pour comprendre des phrases, détecter des sentiments ou analyser le sens général.
+                            
+                            
+                        </p>
 
                         <div class="tech-diagram">
                             <div class="diagram-container">
                                 <svg
                                     class="transformer-diagram"
-                                    viewBox="0 0 800 400"
+                                    viewBox="0 0 700 250"
                                     xmlns="http://www.w3.org/2000/svg"
                                 >
                                     <!-- Input Embeddings -->
@@ -686,8 +736,8 @@
                             </div>
 
                             <div class="grid md:grid-cols-3 gap-4 mt-6">
-                                <div class="p-3 bg-indigo-50 rounded-lg">
-                                    <h3 class="font-semibold text-indigo-800">
+                                <div class="p-3 bg-grey-50 rounded-lg">
+                                    <h3 class="font-semibold text-grey-800">
                                         Embedding d'Entrée
                                     </h3>
                                     <p class="text-sm text-gray-700">
@@ -722,13 +772,13 @@
 
             <!-- About Page -->
             <div id="about-page" class="page-transition hidden">
-                <div class="bg-white rounded-xl shadow-md p-6 mb-8">
+                <div class="bg-white rounded-xl shadow-xl p-6 mb-8">
                     <h1 class="text-3xl font-bold mb-6">
-                        À Propos de l'Analyseur de Sentiment
+                        À Propos de l'Analyseur de Sentiments
                     </h1>
                     <div class="prose max-w-none">
                         <p class="mb-4">
-                            L'Analyseur de Sentiment a été créé pour aider les
+                            L'Analyseur de Sentiments a été créé pour aider les
                             entreprises, les créateurs et les chercheurs à
                             comprendre l'opinion publique à travers les
                             interactions sur les réseaux sociaux. Notre outil
@@ -754,9 +804,9 @@
                             des données.
                         </p>
 
-                        <div class="bg-indigo-50 p-4 rounded-lg mt-6">
+                        <div class="bg-grey-50 p-4 rounded-lg mt-6">
                             <h3
-                                class="text-xl font-semibold mb-2 text-indigo-800"
+                                class="text-xl font-semibold mb-2 text-grey-800"
                             >
                                 Fonctionnalités Clés :
                             </h3>

@@ -55,7 +55,7 @@ function initAnalyzer() {
         const url = urlInput.value.trim();
 
         if (!url) {
-            alert("Please enter a URL to analyze");
+            alert("Merci d'entrer une URL à analyser");
             return;
         }
 
@@ -64,12 +64,12 @@ function initAnalyzer() {
             currentPlatform === "youtube" &&
             !url.includes("youtube.com/watch")
         ) {
-            alert("Please enter a valid YouTube video URL");
+            alert("Merci d'entrer une URL de vidéo YouTube valide");
             return;
         }
 
         if (currentPlatform === "twitter" && !url.includes("twitter.com/")) {
-            alert("Please enter a valid Twitter/X post URL");
+            alert("Merci d'entrer une URL de post Twitter valide");
             return;
         }
 
@@ -111,7 +111,7 @@ function initAnalyzer() {
             console.log("étape 2");
             // Reset button
             analyzeBtn.innerHTML =
-                '<i class="fas fa-chart-bar mr-2"></i> Analyze Sentiment';
+                '<i class="fas fa-chart-bar mr-2"></i> Analyser les sentiments';
             console.log("étape 3");
             analyzeBtn.disabled = false;
             console.log("étape 4");
@@ -199,7 +199,7 @@ async function fetchAnalysisFromAPI(url, platform) {
         const analyzeBtn = document.getElementById("analyze-btn");
         if (analyzeBtn) {
             analyzeBtn.innerHTML =
-                '<i class="fas fa-chart-bar mr-2"></i> Analyze Sentiment';
+                '<i class="fas fa-chart-bar mr-2"></i> Analyser les sentiments';
             analyzeBtn.disabled = false;
         }
 
@@ -565,7 +565,6 @@ function renderEmotionsHistogram(emotionCounts) {
         bar.className = "h-4 rounded-full";
         bar.style.width = `${percentage}%`;
         bar.style.backgroundColor = emotionColors[emotion] || "#9CA3AF";
-        bar.title = `${count} commentaires`;
 
         barContainer.appendChild(bar);
         emotionItem.appendChild(barContainer);
@@ -573,7 +572,6 @@ function renderEmotionsHistogram(emotionCounts) {
         // Info additionnelle en petit
         const countInfo = document.createElement("div");
         countInfo.className = "text-xs text-gray-500 mt-1";
-        countInfo.textContent = `${count} commentaires`;
         emotionItem.appendChild(countInfo);
 
         // Ajouter à la liste
