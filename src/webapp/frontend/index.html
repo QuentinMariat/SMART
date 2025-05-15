@@ -317,7 +317,8 @@
                                 id="sample-btn"
                                 class="text-sm bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition duration-300 flex items-center"
                             >
-                                <i class="fas fa-lightbulb mr-2"></i> Exemple d'URL
+                                <i class="fas fa-lightbulb mr-2"></i> Exemple
+                                d'URL
                             </button>
                         </div>
                     </div>
@@ -340,73 +341,25 @@
                             </div>
                         </div>
 
-                        <div class="grid md:grid-cols-3 gap-4 mb-6">
+                        <div class="grid md:grid-cols-1 gap-4 mb-6">
                             <div
-                                class="sentiment-summary bg-white p-4 rounded-lg shadow-xl border border-gray-200"
+                                class="emotion-summary bg-white p-4 rounded-lg shadow-xl border border-purple-200"
                             >
-                                <div
-                                    class="flex justify-between items-center mb-2"
-                                >
-                                    <span class="font-medium text-green-700"
-                                        >Positif</span
-                                    >
-                                    <span
-                                        id="positive-percent"
-                                        class="font-bold"
-                                        >0%</span
-                                    >
+                                <div class="flex items-center mb-3">
+                                    <i
+                                        class="fas fa-brain text-purple-500 text-xl mr-2"
+                                    ></i>
+                                    <h3 class="font-semibold text-purple-800">
+                                        Analyse des émotions
+                                    </h3>
                                 </div>
-                                <div class="sentiment-bar bg-gray-200">
-                                    <div
-                                        id="positive-bar"
-                                        class="sentiment-bar bg-green-500"
-                                        style="width: 0%"
-                                    ></div>
-                                </div>
-                            </div>
-                            <div
-                                class="sentiment-summary bg-white p-4 rounded-lg shadow-xl border border-gray-200"
-                            >
-                                <div
-                                    class="flex justify-between items-center mb-2"
-                                >
-                                    <span class="font-medium text-gray-700"
-                                        >Neutre</span
-                                    >
-                                    <span id="neutral-percent" class="font-bold"
-                                        >0%</span
-                                    >
-                                </div>
-                                <div class="sentiment-bar bg-gray-200">
-                                    <div
-                                        id="neutral-bar"
-                                        class="sentiment-bar bg-blue-500"
-                                        style="width: 0%"
-                                    ></div>
-                                </div>
-                            </div>
-                            <div
-                                class="sentiment-summary bg-white p-4 rounded-lg shadow-xl border border-gray-200"
-                            >
-                                <div
-                                    class="flex justify-between items-center mb-2"
-                                >
-                                    <span class="font-medium text-red-700"
-                                        >Négatif</span
-                                    >
-                                    <span
-                                        id="negative-percent"
-                                        class="font-bold"
-                                        >0%</span
-                                    >
-                                </div>
-                                <div class="sentiment-bar bg-gray-200">
-                                    <div
-                                        id="negative-bar"
-                                        class="sentiment-bar bg-red-500"
-                                        style="width: 0%"
-                                    ></div>
-                                </div>
+                                <p class="text-sm text-gray-700 mb-2">
+                                    Notre modèle a analysé tous les commentaires
+                                    et a détecté 28 émotions différentes selon
+                                    le modèle GoEmotion. Consultez l'histogramme
+                                    ci-dessous pour voir la distribution des
+                                    principales émotions dans les commentaires.
+                                </p>
                             </div>
                         </div>
 
@@ -454,21 +407,10 @@
                         <div class="bg-white rounded-lg shadow-xl p-4">
                             <div class="flex justify-between items-center mb-3">
                                 <h4 class="font-semibold">
-                                    Commentaires Principaux
+                                    Commentaires par émotion
                                 </h4>
                                 <div class="flex space-x-2">
-                                    <button
-                                        id="show-positive"
-                                        class="text-xs bg-green-100 text-green-800 px-2 py-1 rounded hover:bg-green-200"
-                                    >
-                                        Positifs
-                                    </button>
-                                    <button
-                                        id="show-negative"
-                                        class="text-xs bg-red-100 text-red-800 px-2 py-1 rounded hover:bg-red-200"
-                                    >
-                                        Négatifs
-                                    </button>
+                                    <!-- Les boutons de filtre seront générés dynamiquement en JS -->
                                     <button
                                         id="show-all"
                                         class="text-xs bg-gray-100 text-gray-800 px-2 py-1 rounded hover:bg-gray-200"
@@ -540,13 +482,13 @@
 
                         <p class="mb-4">
                             La première étape de l'analyse consiste à
-                            transformer le texte brut en une séquence de "tokens".
-                            Nous utilisons une méthode de tokenisation, appelé BPE, qui divise les
-                            mots en sous-mots, en fonction de leur fréquence
-                            d'apparition. 
-                            Chaque sous-mot est converti en un identifiant
-                            numérique unique. Cela permet au modèle de traiter le
-                            texte de manière efficace.
+                            transformer le texte brut en une séquence de
+                            "tokens". Nous utilisons une méthode de
+                            tokenisation, appelé BPE, qui divise les mots en
+                            sous-mots, en fonction de leur fréquence
+                            d'apparition. Chaque sous-mot est converti en un
+                            identifiant numérique unique. Cela permet au modèle
+                            de traiter le texte de manière efficace.
                         </p>
 
                         <img
@@ -555,7 +497,6 @@
                             class="w-full h-auto rounded-lg shadow-lg mb-4 mx-auto"
                             style="max-width: 600px"
                         />
-
 
                         <h2 class="text-2xl font-bold mt-8 mb-4">
                             2ème étape : L'embedding
@@ -582,15 +523,17 @@
 
                         <p class="mb-4">
                             Le modèle utilise une architecture de "transformer".
-                            Le Transformer est un modèle qui lit un texte en entier et comprend comment les mots sont liés entre eux.
-                            Grâce à un mécanisme appelé attention, il peut se concentrer sur les mots importants, peu importe où ils
-                             se trouvent dans la phrase. Par exemple, il peut comprendre que dans "Le chien que Paul a vu courait",
-                            "chien" est celui qui court, même si le mot est loin du verbe.
-
-                            L’encodeur du Transformer traite tout le texte en parallèle,
-                             ce qui le rend rapide et efficace pour comprendre des phrases, détecter des sentiments ou analyser le sens général.
-                            
-                            
+                            Le Transformer est un modèle qui lit un texte en
+                            entier et comprend comment les mots sont liés entre
+                            eux. Grâce à un mécanisme appelé attention, il peut
+                            se concentrer sur les mots importants, peu importe
+                            où ils se trouvent dans la phrase. Par exemple, il
+                            peut comprendre que dans "Le chien que Paul a vu
+                            courait", "chien" est celui qui court, même si le
+                            mot est loin du verbe. L'encodeur du Transformer
+                            traite tout le texte en parallèle, ce qui le rend
+                            rapide et efficace pour comprendre des phrases,
+                            détecter des sentiments ou analyser le sens général.
                         </p>
 
                         <div class="tech-diagram">

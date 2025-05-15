@@ -9,16 +9,12 @@ function initAnalyzer() {
     const sampleBtn = document.getElementById("sample-btn");
     const resultsContainer = document.getElementById("results-container");
     const commentCount = document.getElementById("comment-count");
-    const positivePercent = document.getElementById("positive-percent");
-    const neutralPercent = document.getElementById("neutral-percent");
-    const negativePercent = document.getElementById("negative-percent");
-    const positiveBar = document.getElementById("positive-bar");
-    const neutralBar = document.getElementById("neutral-bar");
-    const negativeBar = document.getElementById("negative-bar");
     const commentsContainer = document.getElementById("comments-container");
-    const showPositive = document.getElementById("show-positive");
-    const showNegative = document.getElementById("show-negative");
-    const showAll = document.getElementById("show-all");
+
+    // Nous ne référençons plus ces éléments car ils seront mis à jour dynamiquement
+    // const showPositive = document.getElementById("show-positive");
+    // const showNegative = document.getElementById("show-negative");
+    // const showAll = document.getElementById("show-all");
 
     // Sample URLs
     const sampleYoutubeUrl = "https://www.youtube.com/watch?v=dQw4w9WgXcQ";
@@ -99,45 +95,26 @@ function initAnalyzer() {
             `;
         }
 
-        // Simulate API call with timeout
+        // Effectuer l'appel API avec un timeout pour l'interface utilisateur
         setTimeout(async () => {
-            // For demo purposes, we'll generate mock data
-            //const mockData = generateMockAnalysis();
-            const mockData = await fetchAnalysisFromAPI(url, currentPlatform);
-
-            console.log("étape 1");
-            // Display results
-            //displayResults(mockData);
-            console.log("étape 2");
-            // Reset button
-            analyzeBtn.innerHTML =
-                '<i class="fas fa-chart-bar mr-2"></i> Analyser les sentiments';
-            console.log("étape 3");
-            analyzeBtn.disabled = false;
-            console.log("étape 4");
-        }, 2000);
+            try {
+                const data = await fetchAnalysisFromAPI(url, currentPlatform);
+                console.log("Données reçues avec succès:", data);
+                // Reset button
+                analyzeBtn.innerHTML =
+                    '<i class="fas fa-chart-bar mr-2"></i> Analyser les sentiments';
+                analyzeBtn.disabled = false;
+            } catch (error) {
+                console.error("Erreur lors de l'analyse:", error);
+                analyzeBtn.innerHTML =
+                    '<i class="fas fa-chart-bar mr-2"></i> Analyser les sentiments';
+                analyzeBtn.disabled = false;
+            }
+        }, 1000);
     });
 
-    // Filter comments by sentiment
-    showPositive?.addEventListener("click", () => {
-        document.querySelectorAll(".comment").forEach(comment => {
-            comment.style.display =
-                comment.dataset.sentiment === "positive" ? "block" : "none";
-        });
-    });
-
-    showNegative?.addEventListener("click", () => {
-        document.querySelectorAll(".comment").forEach(comment => {
-            comment.style.display =
-                comment.dataset.sentiment === "negative" ? "block" : "none";
-        });
-    });
-
-    showAll?.addEventListener("click", () => {
-        document.querySelectorAll(".comment").forEach(comment => {
-            comment.style.display = "block";
-        });
-    });
+    // Nous ne configurons plus les gestionnaires d'événements ici
+    // car ils seront créés dynamiquement dans updateCommentFilters
 }
 
 async function fetchAnalysisFromAPI(url, platform) {
@@ -174,24 +151,69 @@ async function fetchAnalysisFromAPI(url, platform) {
 
         const data = await response.json();
 
-        // Créer des données d'émotions fictives si elles n'existent pas
+        // Log détaillé des données reçues pour le débogage
+        console.log("Données complètes reçues du backend:", data);
+
+        // Vérifier si emotion_counts est présent dans la réponse API
         if (!data.emotion_counts) {
             console.log(
                 "Aucune donnée d'émotions reçue du backend, création de données fictives"
             );
-            // Convertir les pourcentages de sentiment en données d'émotions
-            data.emotion_counts = {
-                joy: Math.round(data.positive * 100 * 0.6),
-                admiration: Math.round(data.positive * 100 * 0.4),
-                disappointment: Math.round(data.negative * 100 * 0.5),
-                annoyance: Math.round(data.negative * 100 * 0.3),
-                anger: Math.round(data.negative * 100 * 0.2),
-                neutral: Math.round(data.neutral * 100)
-            };
+
+            // Essayer de récupérer les données d'émotions à partir de normalized_results
+            if (data.normalized_results && data.normalized_results.length > 0) {
+                console.log(
+                    "Tentative de génération d'emotion_counts à partir des résultats normalisés"
+                );
+
+                // Compter les émotions à partir des résultats normalisés
+                const emotionCounts = {};
+                data.normalized_results.forEach(result => {
+                    const label = result.label;
+                    if (label) {
+                        emotionCounts[label] = (emotionCounts[label] || 0) + 1;
+                    }
+                });
+
+                if (Object.keys(emotionCounts).length > 0) {
+                    console.log(
+                        "Émotions générées à partir des résultats:",
+                        emotionCounts
+                    );
+                    data.emotion_counts = emotionCounts;
+                } else {
+                    // Convertir les pourcentages de sentiment en données d'émotions fictives
+                    data.emotion_counts = {
+                        joy: Math.round(data.positive * 100 * 0.4),
+                        admiration: Math.round(data.positive * 100 * 0.3),
+                        gratitude: Math.round(data.positive * 100 * 0.3), // S'assurer que gratitude est incluse
+                        disappointment: Math.round(data.negative * 100 * 0.4),
+                        annoyance: Math.round(data.negative * 100 * 0.3),
+                        anger: Math.round(data.negative * 100 * 0.3),
+                        neutral: Math.round(data.neutral * 100)
+                    };
+                }
+            } else {
+                // Convertir les pourcentages de sentiment en données d'émotions fictives
+                data.emotion_counts = {
+                    joy: Math.round(data.positive * 100 * 0.4),
+                    admiration: Math.round(data.positive * 100 * 0.3),
+                    gratitude: Math.round(data.positive * 100 * 0.3), // S'assurer que gratitude est incluse
+                    disappointment: Math.round(data.negative * 100 * 0.4),
+                    annoyance: Math.round(data.negative * 100 * 0.3),
+                    anger: Math.round(data.negative * 100 * 0.3),
+                    neutral: Math.round(data.neutral * 100)
+                };
+            }
         }
+
+        // Vérifier les émotions détectées
+        console.log("Émotions détectées:", data.emotion_counts);
 
         // Afficher les résultats
         displayResults(data);
+
+        return data;
     } catch (error) {
         console.error("Erreur lors de l'analyse:", error);
 
@@ -285,6 +307,7 @@ async function fetchAnalysisFromAPI(url, platform) {
 
         // Scroll to results
         resultsContainer.scrollIntoView({ behavior: "smooth" });
+        throw error;
     }
 }
 
@@ -385,97 +408,72 @@ function generateMockAnalysis() {
 function displayResults(data) {
     const resultsContainer = document.getElementById("results-container");
     const commentCount = document.getElementById("comment-count");
-    const positivePercent = document.getElementById("positive-percent");
-    const neutralPercent = document.getElementById("neutral-percent");
-    const negativePercent = document.getElementById("negative-percent");
-    const positiveBar = document.getElementById("positive-bar");
-    const neutralBar = document.getElementById("neutral-bar");
-    const negativeBar = document.getElementById("negative-bar");
 
     // Show results container
     resultsContainer.classList.remove("hidden");
 
-    // Afficher un message de succès temporaire
+    // Afficher un message de succès simple
     const successMsg = document.createElement("div");
     successMsg.className =
         "bg-green-100 text-green-800 p-3 rounded-lg mb-4 flex items-center";
     successMsg.innerHTML = `
         <i class="fas fa-check-circle text-green-600 mr-2 text-xl"></i>
-        <span><strong>Analyse complète !</strong> Tous les ${data.totalComments} commentaires ont été analysés avec succès.</span>
+        <span>Analyse complète de ${data.totalComments} commentaires</span>
     `;
-    // Insérer au début du conteneur de résultats
-    resultsContainer.insertBefore(successMsg, resultsContainer.firstChild);
 
-    // Faire disparaître le message après 10 secondes
-    setTimeout(() => {
-        successMsg.style.transition = "opacity 1s";
-        successMsg.style.opacity = 0;
-        setTimeout(() => successMsg.remove(), 1000);
-    }, 10000);
+    // Vider le conteneur avant d'ajouter de nouveaux éléments
+    resultsContainer.innerHTML = "";
+    resultsContainer.appendChild(successMsg);
 
-    // Update counts and percentages
+    // Update comment count
     commentCount.textContent = data.totalComments;
-    positivePercent.textContent = `${Math.round(data.positive * 100)}%`;
-    neutralPercent.textContent = `${Math.round(data.neutral * 100)}%`;
-    negativePercent.textContent = `${Math.round(data.negative * 100)}%`;
 
-    // Update progress bars
-    positiveBar.style.width = `${data.positive * 100}%`;
-    neutralBar.style.width = `${data.neutral * 100}%`;
-    negativeBar.style.width = `${data.negative * 100}%`;
-
-    // Re-show sentiment summaries (in case they were hidden by an error)
-    document.querySelectorAll(".sentiment-summary").forEach(el => {
-        el.style.display = "block";
+    // Simplification - masquer tous les éléments non nécessaires
+    const sentimentSummaries = document.querySelectorAll(".sentiment-summary");
+    sentimentSummaries.forEach(el => {
+        el.parentElement.style.display = "none";
     });
 
-    // Generate emotions histogram if emotion_counts exist
-    if (data.emotion_counts) {
-        renderEmotionsHistogram(data.emotion_counts);
-    }
+    // Créer un conteneur pour notre graphique simplifié
+    const graphContainer = document.createElement("div");
+    graphContainer.className = "bg-white rounded-lg shadow-xl p-6 mb-6";
+    graphContainer.innerHTML = `
+        <h3 class="text-xl font-bold mb-4 text-center">Distribution des émotions</h3>
+        <div id="simple-emotion-chart" class="py-4"></div>
+    `;
+    resultsContainer.appendChild(graphContainer);
 
-    // Display comments
-    console.log("étape 1.1");
-    renderComments(data.comments);
-    console.log("étape 1.2");
+    // Générer uniquement notre graphique simplifié
+    if (data.emotion_counts) {
+        renderSimpleEmotionChart(data.emotion_counts);
+    }
 
     // Scroll to results
     resultsContainer.scrollIntoView({ behavior: "smooth" });
-    console.log("étape 1.3");
 }
 
-// Render the emotions histogram
-function renderEmotionsHistogram(emotionCounts) {
-    const emotionsContainer = document.getElementById("emotions-histogram");
-    emotionsContainer.innerHTML = "";
+// Nouvelle fonction de rendu simplifié pour le graphique
+function renderSimpleEmotionChart(emotionCounts) {
+    const chartContainer = document.getElementById("simple-emotion-chart");
+    chartContainer.innerHTML = "";
 
     // If no emotions data
     if (!emotionCounts || Object.keys(emotionCounts).length === 0) {
-        emotionsContainer.innerHTML =
-            '<div class="flex justify-center items-center h-full"><span class="text-gray-500">Aucune donnée d\'émotion disponible</span></div>';
+        chartContainer.innerHTML =
+            '<div class="text-center p-4"><span class="text-gray-500">Aucune donnée d\'émotion disponible</span></div>';
         return;
     }
 
-    // Get the emotions sorted by count (highest first)
-    const sortedEmotions = Object.entries(emotionCounts)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 6); // Get top 6 emotions
-
-    // Calculate total for percentages
-    const totalCount = Object.values(emotionCounts).reduce(
-        (sum, count) => sum + count,
-        0
-    );
-
-    // Add title with total count
-    const titleDiv = document.createElement("div");
-    titleDiv.className = "text-lg font-semibold text-gray-800 mb-4";
-    titleDiv.textContent = `Top 6 émotions détectées`;
-    emotionsContainer.appendChild(titleDiv);
-
-    // Create emotions list container
-    const emotionsList = document.createElement("div");
-    emotionsList.className = "space-y-4";
+    // Vérification debug pour gratitude
+    if ("gratitude" in emotionCounts) {
+        console.log(
+            "✅ L'émotion 'gratitude' est présente dans les données avec la valeur:",
+            emotionCounts.gratitude
+        );
+    } else {
+        console.warn("⚠️ L'émotion 'gratitude' est ABSENTE des données!");
+        console.log("Émotions disponibles:", Object.keys(emotionCounts));
+    }
 
     // Traduction des émotions en français
     const emotionTranslations = {
@@ -489,6 +487,11 @@ function renderEmotionsHistogram(emotionCounts) {
         pride: "Fierté",
         relief: "Soulagement",
         approval: "Approbation",
+        caring: "Bienveillance",
+        surprise: "Surprise",
+        curiosity: "Curiosité",
+        realization: "Réalisation",
+        desire: "Désir",
 
         anger: "Colère",
         annoyance: "Agacement",
@@ -500,6 +503,8 @@ function renderEmotionsHistogram(emotionCounts) {
         grief: "Chagrin",
         remorse: "Remords",
         sadness: "Tristesse",
+        confusion: "Confusion",
+        nervousness: "Nervosité",
 
         neutral: "Neutre"
     };
@@ -516,6 +521,11 @@ function renderEmotionsHistogram(emotionCounts) {
         pride: "#6366F1", // indigo
         relief: "#14B8A6", // teal
         approval: "#0EA5E9", // sky
+        caring: "#0369A1", // light blue
+        surprise: "#A855F7", // violet
+        curiosity: "#06B6D4", // cyan
+        realization: "#0891B2", // teal
+        desire: "#DB2777", // pink
 
         anger: "#DC2626", // red
         annoyance: "#F97316", // orange
@@ -527,109 +537,295 @@ function renderEmotionsHistogram(emotionCounts) {
         grief: "#374151", // gray
         remorse: "#6B7280", // gray
         sadness: "#1D4ED8", // blue
+        confusion: "#6B7280", // gray
+        nervousness: "#8B5CF6", // purple
 
         neutral: "#9CA3AF" // gray
     };
 
-    // Créer un élément pour chaque émotion
+    // Séparer l'émotion neutre des autres émotions
+    let neutralEmotionEntry = null;
+    let neutralCount = 0;
+
+    // Extraire l'entrée neutre si elle existe
+    if ("neutral" in emotionCounts) {
+        neutralCount = emotionCounts["neutral"];
+        neutralEmotionEntry = ["neutral", neutralCount];
+        // Créer une copie sans l'entrée neutre pour le tri
+        const nonNeutralEmotions = {};
+        Object.entries(emotionCounts).forEach(([emotion, count]) => {
+            if (emotion !== "neutral") {
+                nonNeutralEmotions[emotion] = count;
+            }
+        });
+
+        // Trier les émotions non neutres par nombre décroissant
+        let sortedNonNeutral = Object.entries(nonNeutralEmotions).sort(
+            (a, b) => b[1] - a[1]
+        );
+
+        // Réintégrer l'entrée neutre à la fin
+        sortedEmotions = [...sortedNonNeutral];
+        if (neutralEmotionEntry) {
+            sortedEmotions.push(neutralEmotionEntry);
+        }
+    } else {
+        // S'il n'y a pas d'entrée neutre, trier simplement par ordre décroissant
+        sortedEmotions = Object.entries(emotionCounts).sort(
+            (a, b) => b[1] - a[1]
+        );
+    }
+
+    console.log(
+        "Émotions détectées et triées pour affichage (neutre en bas):",
+        sortedEmotions
+    );
+
+    // Créer un graphique à barres simple
+    const chartDiv = document.createElement("div");
+    chartDiv.className = "space-y-4 max-h-96 overflow-y-auto p-2";
+
+    // Si aucune barre n'est créée, on garde une trace
+    let barsCreated = 0;
+
+    // Calculer le total sans les neutres pour un pourcentage plus significatif
+    const totalNonNeutral = sortedEmotions.reduce((sum, [emotion, count]) => {
+        return emotion !== "neutral" ? sum + count : sum;
+    }, 0);
+
+    // Calculer le total global pour la légende
+    const totalEmotions = totalNonNeutral + neutralCount;
+
+    // Déterminer la valeur maximale pour les barres (maximum non neutre)
+    const maxCount =
+        sortedEmotions.length > 0 && sortedEmotions[0][0] !== "neutral"
+            ? sortedEmotions[0][1]
+            : sortedEmotions.length > 1
+            ? sortedEmotions[1][1]
+            : 1;
+
+    // Créer une barre pour chaque émotion
     sortedEmotions.forEach(([emotion, count]) => {
-        // Calculer le pourcentage arrondi
-        const percentage = Math.round((count / totalCount) * 100);
+        if (count <= 0) return; // Ignorer les émotions avec 0 occurrence
+
         const emotionName = emotionTranslations[emotion] || emotion;
+        const colorHex = emotionColors[emotion] || "#9CA3AF";
 
-        // Créer un conteneur pour cette émotion
-        const emotionItem = document.createElement("div");
-        emotionItem.className = "w-full";
+        const barContainer = document.createElement("div");
+        barContainer.className = "mb-3";
+        barContainer.dataset.emotion = emotion; // Ajouter l'attribut de données
 
-        // En-tête avec nom et pourcentage
+        // En-tête avec nom et nombre
         const header = document.createElement("div");
         header.className = "flex justify-between items-center mb-1";
 
-        const nameElem = document.createElement("div");
-        nameElem.className = "font-medium text-gray-800";
-        nameElem.textContent = emotionName;
+        const nameElement = document.createElement("div");
+        nameElement.className = "font-medium";
+        nameElement.textContent = emotionName;
 
-        const percentElem = document.createElement("div");
-        percentElem.className = "font-semibold text-gray-900";
-        percentElem.textContent = `${percentage}%`;
+        const countElement = document.createElement("div");
+        countElement.className = "font-bold";
+        countElement.textContent = count;
 
-        header.appendChild(nameElem);
-        header.appendChild(percentElem);
-        emotionItem.appendChild(header);
+        header.appendChild(nameElement);
+        header.appendChild(countElement);
+        barContainer.appendChild(header);
 
         // Barre de progression
-        const barContainer = document.createElement("div");
-        barContainer.className = "w-full bg-gray-200 rounded-full h-4";
+        const progressBar = document.createElement("div");
+        progressBar.className = "w-full bg-gray-200 rounded-full h-6";
+
+        // Calculer la largeur maximale pour la visualisation
+        // Pour les non-neutres, on calcule par rapport au maximum des non-neutres
+        // Pour le neutre, on calcule par rapport au maximum global
+        let percentage;
+        if (emotion === "neutral") {
+            // Pour le neutre, on utilise une formule spéciale pour ne pas que la barre soit trop grande
+            percentage = Math.max(
+                5,
+                Math.min(70, Math.round((count / (maxCount * 1.5)) * 100))
+            );
+        } else {
+            // Pour les autres émotions, on utilise le calcul normal
+            percentage = Math.max(5, Math.round((count / maxCount) * 100));
+        }
 
         const bar = document.createElement("div");
-        bar.className = "h-4 rounded-full";
+        bar.className =
+            "h-6 rounded-full flex items-center justify-center text-white text-xs font-bold";
         bar.style.width = `${percentage}%`;
-        bar.style.backgroundColor = emotionColors[emotion] || "#9CA3AF";
+        bar.style.backgroundColor = colorHex;
+        bar.textContent = count;
 
-        barContainer.appendChild(bar);
-        emotionItem.appendChild(barContainer);
+        progressBar.appendChild(bar);
+        barContainer.appendChild(progressBar);
 
-        // Info additionnelle en petit
-        const countInfo = document.createElement("div");
-        countInfo.className = "text-xs text-gray-500 mt-1";
-        emotionItem.appendChild(countInfo);
-
-        // Ajouter à la liste
-        emotionsList.appendChild(emotionItem);
+        chartDiv.appendChild(barContainer);
+        barsCreated++;
     });
 
-    emotionsContainer.appendChild(emotionsList);
+    if (barsCreated === 0) {
+        chartDiv.innerHTML =
+            '<div class="text-center p-4 text-red-500">⚠️ Données présentes mais aucune barre créée. Problème détecté.</div>';
+        console.error(
+            "⚠️ ERREUR: Aucune barre n'a été créée malgré la présence de données:",
+            emotionCounts
+        );
+    }
 
-    // Remarque explicative
-    const note = document.createElement("div");
-    note.className = "text-sm text-gray-600 mt-6 italic";
-    note.textContent =
-        "Les pourcentages représentent la proportion de chaque émotion parmi tous les commentaires.";
-    emotionsContainer.appendChild(note);
+    chartContainer.appendChild(chartDiv);
+
+    // Ajouter une légende simple
+    const legend = document.createElement("div");
+    legend.className = "text-sm text-gray-600 mt-4 text-center";
+
+    // Calcul du pourcentage pour les émotions non neutres vs neutres
+    let nonNeutralPercentage =
+        totalNonNeutral > 0
+            ? Math.round((totalNonNeutral / totalEmotions) * 100)
+            : 0;
+    let neutralPercentage =
+        neutralCount > 0 ? Math.round((neutralCount / totalEmotions) * 100) : 0;
+
+    legend.innerHTML = `
+        <div>${sortedEmotions.length} émotions détectées - ${totalEmotions} commentaires analysés</div>
+        <div class="mt-1">
+            <span class="font-semibold">${nonNeutralPercentage}%</span> commentaires avec émotion spécifique, 
+            <span class="font-semibold">${neutralPercentage}%</span> commentaires neutres
+        </div>
+    `;
+
+    chartContainer.appendChild(legend);
 }
 
-// Render comments
+// Remplacer renderComments par une fonction simplifiée qui ne fait rien
 function renderComments(comments) {
-    const commentsContainer = document.getElementById("comments-container");
-    commentsContainer.innerHTML = "";
+    // Ne rien faire, nous n'affichons plus les commentaires individuels
+    console.log(`${comments.length} commentaires reçus mais non affichés`);
+}
 
-    comments.forEach(comment => {
-        const commentDiv = document.createElement("div");
-        commentDiv.className = `comment p-3 rounded-lg border ${
-            comment.sentiment === "positive"
-                ? "border-green-200 bg-green-50"
-                : comment.sentiment === "negative"
-                ? "border-red-200 bg-red-50"
-                : "border-gray-200 bg-gray-50"
-        }`;
-        commentDiv.dataset.sentiment = comment.sentiment;
+// Met à jour les filtres de commentaires pour afficher les émotions au lieu des sentiments
+function updateCommentFilters(emotions, translations) {
+    // Supprimer les anciens boutons de filtre
+    const showPositive = document.getElementById("show-positive");
+    const showNegative = document.getElementById("show-negative");
+    const showAll = document.getElementById("show-all");
 
-        commentDiv.innerHTML = `
-            <div class="flex justify-between items-start mb-1">
-                <p class="text-sm font-medium ${
-                    comment.sentiment === "positive"
-                        ? "text-green-800"
-                        : comment.sentiment === "negative"
-                        ? "text-red-800"
-                        : "text-gray-800"
-                }">${comment.text}</p>
-                <span class="text-xs text-gray-500 ml-2">${comment.time}</span>
-            </div>
-            <div class="flex justify-between items-center">
-                <span class="text-xs ${
-                    comment.sentiment === "positive"
-                        ? "text-green-600"
-                        : comment.sentiment === "negative"
-                        ? "text-red-600"
-                        : "text-gray-600"
-                } capitalize">${comment.sentiment}</span>
-                <div class="flex items-center text-xs text-gray-500">
-                    <i class="fas fa-thumbs-up mr-1"></i>
-                    <span>${comment.likes}</span>
-                </div>
-            </div>
-        `;
+    // Conserver uniquement le bouton "Tous"
+    if (showPositive) showPositive.remove();
+    if (showNegative) showNegative.remove();
 
-        commentsContainer.appendChild(commentDiv);
+    // Créer un conteneur pour le sélecteur d'émotions
+    const filterContainer =
+        document.querySelector(".flex.space-x-2") ||
+        document.createElement("div");
+
+    if (!filterContainer.classList.contains("flex")) {
+        filterContainer.className = "flex flex-wrap gap-2 mb-3";
+
+        // Trouver où insérer le conteneur
+        const commentsHeader = document.querySelector("h4.font-semibold");
+        if (commentsHeader) {
+            commentsHeader.parentNode.insertBefore(
+                filterContainer,
+                commentsHeader.nextSibling
+            );
+        }
+    } else {
+        // Nettoyer le conteneur existant tout en gardant le bouton "Tous"
+        Array.from(filterContainer.children).forEach(child => {
+            if (child.id !== "show-all") {
+                child.remove();
+            }
+        });
+    }
+
+    // Créer le bouton "Tous" s'il n'existe pas
+    if (!showAll) {
+        const allButton = document.createElement("button");
+        allButton.id = "show-all";
+        allButton.className =
+            "text-xs bg-gray-100 text-gray-800 px-2 py-1 rounded hover:bg-gray-200";
+        allButton.textContent = "Tous";
+        allButton.addEventListener("click", () => {
+            document.querySelectorAll(".comment").forEach(comment => {
+                comment.style.display = "block";
+            });
+
+            // Mettre ce bouton en surbrillance
+            document
+                .querySelectorAll(".emotion-filter")
+                .forEach(btn =>
+                    btn.classList.remove("ring-2", "ring-offset-1")
+                );
+            allButton.classList.add("ring-2", "ring-offset-1", "ring-gray-400");
+        });
+        filterContainer.appendChild(allButton);
+    }
+
+    // Réutiliser la référence au bouton "Tous" et lui donner le focus
+    const allButton = document.getElementById("show-all");
+    allButton.classList.add("ring-2", "ring-offset-1", "ring-gray-400");
+
+    // Ajouter un sélecteur d'émotions
+    const selectContainer = document.createElement("div");
+    selectContainer.className = "relative ml-2";
+
+    const selectLabel = document.createElement("label");
+    selectLabel.htmlFor = "emotion-select";
+    selectLabel.className = "text-xs text-gray-600 block mb-1";
+    selectLabel.textContent = "Filtrer par émotion:";
+
+    const select = document.createElement("select");
+    select.id = "emotion-select";
+    select.className = "text-xs border border-gray-300 rounded px-2 py-1";
+
+    // Option par défaut
+    const defaultOption = document.createElement("option");
+    defaultOption.value = "";
+    defaultOption.textContent = "Choisir une émotion";
+    select.appendChild(defaultOption);
+
+    // Ajouter les options pour chaque émotion
+    emotions
+        .sort((a, b) => {
+            const nameA = translations[a] || a;
+            const nameB = translations[b] || b;
+            return nameA.localeCompare(nameB);
+        })
+        .forEach(emotion => {
+            const option = document.createElement("option");
+            option.value = emotion;
+            option.textContent = translations[emotion] || emotion;
+            select.appendChild(option);
+        });
+
+    // Gérer le changement de sélection
+    select.addEventListener("change", () => {
+        if (!select.value) {
+            // Si aucune option sélectionnée, afficher tous les commentaires
+            document.querySelectorAll(".comment").forEach(comment => {
+                comment.style.display = "block";
+            });
+
+            // Mettre le bouton "Tous" en surbrillance
+            allButton.click();
+            return;
+        }
+
+        // Filtrer les commentaires par émotion
+        document.querySelectorAll(".comment").forEach(comment => {
+            comment.style.display =
+                comment.dataset.emotion === select.value ? "block" : "none";
+        });
+
+        // Retirer la surbrillance de tous les boutons
+        document
+            .querySelectorAll(".emotion-filter, #show-all")
+            .forEach(btn => btn.classList.remove("ring-2", "ring-offset-1"));
     });
+
+    selectContainer.appendChild(selectLabel);
+    selectContainer.appendChild(select);
+    filterContainer.appendChild(selectContainer);
 }

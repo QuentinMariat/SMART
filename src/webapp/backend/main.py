@@ -62,6 +62,7 @@ class DetailedAnalysisResponse(BaseModel):
     negative: float
     neutral: float
     comments: List[Comment]
+    emotion_counts: Optional[dict] = None  # Ajout d'un champ optional pour les émotions
 
 async def generate_analysis(url) -> DetailedAnalysisResponse:
     """
@@ -137,6 +138,19 @@ async def generate_analysis(url) -> DetailedAnalysisResponse:
         normalized_results = analysis_results["normalized_results"]
         logger.info(f"Commentaires analysés avec succès: {len(normalized_results)}")
         
+        # Log pour vérifier les décomptes d'émotions
+        if "emotion_counts" in analysis_results:
+            emotion_counts = analysis_results["emotion_counts"]
+            logger.info(f"Emotions détectées: {emotion_counts}")
+            
+            # Vérifier la présence de gratitude
+            if "gratitude" in emotion_counts:
+                logger.info(f"✅ Gratitude détectée avec {emotion_counts['gratitude']} occurrences")
+            else:
+                logger.warning("⚠️ Aucune gratitude détectée dans les émotions!")
+        else:
+            logger.warning("⚠️ Aucun décompte d'émotions (emotion_counts) dans les résultats d'analyse!")
+        
         # Récupérer les statistiques de sentiment
         positive_ratio = analysis_results['sentiment_percentages']['positive'] / 100
         negative_ratio = analysis_results['sentiment_percentages']['negative'] / 100
@@ -179,7 +193,8 @@ async def generate_analysis(url) -> DetailedAnalysisResponse:
             positive=round(positive_ratio, 2),
             negative=round(negative_ratio, 2),
             neutral=round(neutral_ratio, 2),
-            comments=comments_for_frontend
+            comments=comments_for_frontend,
+            emotion_counts=analysis_results.get("emotion_counts", {})
         )
         
         logger.debug("Analyse complétée avec succès")
