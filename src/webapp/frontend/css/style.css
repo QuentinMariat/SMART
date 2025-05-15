@@ -40,7 +40,7 @@
 }
 
 .platform-selector.active {
-    background-color: #6366f1;
+    background-color: grey;
     color: white;
 }
 

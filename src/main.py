@@ -12,6 +12,13 @@ from models.bert.bert_trainer import BERTTrainer  # ta classe Trainer existante
 from models.bert.bert import BERTForMultiLabelEmotion, BERTForMLMPretraining
 from transformers import AutoTokenizer
 from src.config.settings import MODEL_NAME, EMOTION_LABELS, MAX_SEQ_LENGTH, TRAINING_ARGS
+from src.tokenizer.bpe_tokenizer import BPETokenizer
+from torch.nn.utils.rnn import pad_sequence
+
+bpe = BPETokenizer()
+bpe.load("data/tokenizer_files/tokenizer.json")
+print("📚 Taille du vocabulaire BPE :", bpe.vocab_size)
+print("🔢 Taille réelle du vocabulaire :", len(bpe.vocab))
 
 # Simple modèle pour classification multilabel
 class SimpleClassifier(torch.nn.Module):
@@ -27,36 +34,20 @@ class SimpleClassifier(torch.nn.Module):
         return logits
 
 def collate_fn(batch):
-    batch_dict = {
-        'input_ids': torch.stack([b['input_ids'] for b in batch]),
+    input_ids = [torch.tensor(b["input_ids"]) for b in batch]
+    attention_masks = [torch.tensor(b["attention_mask"]) for b in batch]
+    labels = [torch.tensor(b["labels"], dtype=torch.float) for b in batch]
+
+    # Padding dynamique
+    input_ids_padded = pad_sequence(input_ids, batch_first=True, padding_value=0)
+    attention_masks_padded = pad_sequence(attention_masks, batch_first=True, padding_value=0)
+    labels_tensor = torch.stack(labels)
+
+    return {
+        "input_ids": input_ids_padded,
+        "attention_mask": attention_masks_padded,
+        "labels": labels_tensor,
     }
-
-    if 'token_type_ids' in batch[0]:
-        batch_dict['token_type_ids'] = torch.stack([b['token_type_ids'] for b in batch])
-    if 'attention_mask' in batch[0]:
-        batch_dict['attention_mask'] = torch.stack([b['attention_mask'] for b in batch])
-    if 'labels' in batch[0]:
-        batch_dict['labels'] = torch.stack([b['labels'] for b in batch]).float()
-
-    return batch_dict
-
-
-
-# Version plus clean avec 2 fonctions mais flm de tout changer la
-# def collate_fn_pretrain(batch):
-#     return {
-#         'input_ids': torch.stack([b['input_ids'] for b in batch]),
-#         'token_type_ids': torch.stack([b['token_type_ids'] for b in batch]) if 'token_type_ids' in batch[0] else None,
-#     }
-
-# def collate_fn_classification(batch):
-#     return {
-#         'input_ids': torch.stack([b['input_ids'] for b in batch]),
-#         'token_type_ids': torch.stack([b['token_type_ids'] for b in batch]) if 'token_type_ids' in batch[0] else None,
-#         'labels': torch.stack([b['labels'] for b in batch]).float(),
-#     }
-
-
 
 def train_model(device, fast_dev=False, pretrained_model=None):
     # 1. Load and preprocess data
@@ -139,7 +130,7 @@ def pretrain_model(device, fast_dev=False):
     val_loader = DataLoader(val_dataset, batch_size=16, collate_fn=collate_fn)
 
     # 3. Modèle
-    vocab_size = tokenizer.vocab_size
+    vocab_size = len(tokenizer.vocab)
     model = BERTForMLMPretraining(vocab_size=vocab_size)
 
     # 4. Trainer
@@ -212,14 +203,11 @@ def create_comments_dataloader(comments, tokenizer, device):
     return dataloader
 
 def main():
+
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     print(f"\033[93mUtilisation de l'appareil : {device}\033[0m")
     #TEMP :
-    tokenizer = load_tokenizer()
-    # Load dataset with subsampling
-    dataset = loading_dataset(max_train_samples=5000, max_val_samples=5000, max_test_samples=5000)
-    # Preprocess dataset
-    train_dataset, val_dataset, test_dataset, tokenizer = preprocess_dataset(dataset, tokenizer)
+    train_dataset, val_dataset, test_dataset, tokenizer = load_and_preprocess_data(tokenizer=bpe,max_train_samples=5000, max_val_samples=5000, max_test_samples=5000)
 
     # 2. DataLoaders
     train_loader = DataLoader(train_dataset, batch_size=16, shuffle=True, collate_fn=collate_fn)

@@ -9,26 +9,22 @@ from src.tokenizer.wrapped_bpe import WrappedBPETokenizer
 from transformers import PreTrainedTokenizerFast
 from transformers import AutoTokenizer
 
-def load_corpus_from_csv(csv_path):
+def load_corpus_from_csv(csv_path: str) -> list[str]:
     """
-    Lit un CSV à une colonne où chaque ligne est un commentaire brut,
+    Lit un fichier texte (une colonne, une ligne = un commentaire brut),
     applique la normalisation et renvoie la liste des textes.
     """
-    corpus = []
-    with open(csv_path, newline="", encoding="utf-8") as f:
-        reader = csv.reader(f)
-        # Si votre CSV comporte une en-tête, décommentez la ligne suivante :
-        # headers = next(reader, None)
+    path = Path(csv_path)
+    if not path.exists():
+        logger.error(f"Fichier {csv_path} introuvable.")
+        return []
 
-        for row in reader:
-            # Assure-toi qu'il y a bien au moins une colonne
-            if not row:
-                continue
-            text = row[0].strip()
+    corpus: list[str] = []
+    with path.open("r", encoding="utf-8") as f:
+        for raw_line in f:
+            text = raw_line.strip()
             if not text:
                 continue
-
-            # Normalise le texte (minuscules, suppression accents, ponctuation…)
             normalized = normalize_text(text)
             corpus.append(normalized)
 
@@ -36,21 +32,22 @@ def load_corpus_from_csv(csv_path):
     return corpus
 
 def main():
-    bpe = BPETokenizer(vocab_size=10000)
+    bpe = BPETokenizer(vocab_size=7500)
     
     # remplace ici par ton chemin vers le CSV
 
-    csv_path = "data/raw/casual_data_windows.csv"  
+    csv_path = "data/raw/entrainement.csv"  
     tokenizer_save_path = "data/tokenizer_files/tokenizer.json"
 
     if not Path(csv_path).exists():
         logger.error(f"Fichier {csv_path} introuvable.")
         return
 
+    
     # Charger corpus depuis CSV
     corpus = load_corpus_from_csv(csv_path)
     logger.info(f"{len(corpus)} textes chargés depuis le CSV.")
-
+    
     """
     # Entraîner le tokenizer
     bpe.train(corpus)
@@ -59,20 +56,20 @@ def main():
     """
     
     # Charger le tokenizer depuis le fichier JSON
-    bpe_save_path = "data/tokenizer.json"
+    bpe_save_path = "data/tokenizer_files/tokenizer.json"
     if Path(bpe_save_path).exists():
         bpe.load(bpe_save_path)
         logger.info("Tokenizer chargé depuis le fichier JSON.")
     
 
     # Wrapper pour HuggingFace
-    tokenizer = WrappedBPETokenizer(bpe, do_lower_case=True)
+    #tokenizer = WrappedBPETokenizer(bpe, do_lower_case=True)
 
     # Test rapide
     logger.info("Testing bpe...")
-    test_text = "welcome Quentin, welcome everyone!"
+    test_text = "welcome Quentin. welcome everyone!"
     test_text = normalize_text(test_text)
-    encoded_text = bpe.encode(test_text)
+    encoded_text = bpe.encode(test_text, max_length=128)
     decoded_text = bpe.decode(encoded_text)
     tokens_with_values = bpe.get_tokens_with_values(test_text)
 
@@ -80,6 +77,7 @@ def main():
     logger.info(f"Encoded text '{test_text}': {encoded_text}")
     logger.info(f"Decoded text: {decoded_text}")
 
+    """
     text = "This game looks amazing!"
     enc = tokenizer(text)
 
@@ -107,7 +105,7 @@ def main():
         print("AM  :", mask)
         print("Dec :", tokenizer.decode(seq_ids))
         print("---")
-
+    """
 
 if __name__ == "__main__":
     main()

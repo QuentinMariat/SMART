@@ -41,7 +41,15 @@ class BERTEmbedding(torch.nn.Module):
         :param type_vocab_size: number of segment types (typically 2)
         """
         super().__init__()
-        self.token = torch.nn.Embedding(vocab_size, embed_size, padding_idx=0)
+        self.embed_size = embed_size
+        self.UNK_ID = 6828
+        self.PAD_ID = 7322
+        self.CLS_ID = 7323
+        self.SEP_ID = 7324
+        
+        # (m, seq_len) --> (m, seq_len, embed_size)
+        # padding_idx is not updated during training, remains as fixed pad (0)
+        self.token = torch.nn.Embedding(vocab_size, embed_size, padding_idx=self.PAD_ID)
         self.position = PositionalEmbedding(d_model=embed_size, max_len=seq_len)
         self.segment = torch.nn.Embedding(type_vocab_size, embed_size)
         self.dropout = torch.nn.Dropout(p=dropout)

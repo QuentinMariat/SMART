@@ -87,13 +87,19 @@ def preprocess_dataset(ds, tokenizer, max_length=256):
 
     # Tokenize with dynamic max length based on dataset statistics
     def tokenize_fn(examples):
-        return tokenizer(
+        # ton BPETokenizer répond à __call__ et renvoie un dict
+        out = tokenizer(
             examples["text"],
-            truncation=True,
             padding="max_length",
-            max_length=max_length,
-            return_attention_mask=True
+            truncation=True,
+            max_length=128,
+            return_tensors=None,
         )
+        # out == {"input_ids": List[List[int]], "attention_mask": List[List[int]]}
+        return {
+            "input_ids": out["input_ids"],
+            "attention_mask": out.get("attention_mask", [[1]*len(ids) for ids in out["input_ids"]]),
+        }
 
     print(f"\nTokenizing with max_length={max_length}...")
     train_tok = ds["train"].map(tokenize_fn, batched=True, remove_columns=["text"])
