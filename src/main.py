@@ -10,6 +10,13 @@ from models.bert.bert_trainer import BERTTrainer  # ta classe Trainer existante
 from models.bert.bert import BERTForMultiLabelEmotion
 from transformers import AutoTokenizer
 from src.config.settings import MODEL_NAME, EMOTION_LABELS
+from src.tokenizer.bpe_tokenizer import BPETokenizer
+from torch.nn.utils.rnn import pad_sequence
+
+bpe = BPETokenizer()
+bpe.load("data/tokenizer_files/tokenizer.json")
+print("📚 Taille du vocabulaire BPE :", bpe.vocab_size)
+print("🔢 Taille réelle du vocabulaire :", len(bpe.vocab))
 
 # Simple modèle pour classification multilabel
 class SimpleClassifier(torch.nn.Module):
@@ -25,17 +32,27 @@ class SimpleClassifier(torch.nn.Module):
         return logits
 
 def collate_fn(batch):
-    input_ids = torch.stack([b['input_ids'] for b in batch])
-    attention_mask = torch.stack([b['attention_mask'] for b in batch])
-    labels = torch.stack([b['labels'] for b in batch]).float()
-    return {'input_ids': input_ids, 'attention_mask': attention_mask, 'labels': labels}
+    input_ids = [torch.tensor(b["input_ids"]) for b in batch]
+    attention_masks = [torch.tensor(b["attention_mask"]) for b in batch]
+    labels = [torch.tensor(b["labels"], dtype=torch.float) for b in batch]
+
+    # Padding dynamique
+    input_ids_padded = pad_sequence(input_ids, batch_first=True, padding_value=0)
+    attention_masks_padded = pad_sequence(attention_masks, batch_first=True, padding_value=0)
+    labels_tensor = torch.stack(labels)
+
+    return {
+        "input_ids": input_ids_padded,
+        "attention_mask": attention_masks_padded,
+        "labels": labels_tensor,
+    }
 
 def train_model(device, fast_dev=False):
     # 1. Charger et prétraiter les données
     if fast_dev:
-        train_dataset, val_dataset, test_dataset, tokenizer = load_and_preprocess_data(max_train_samples=5000, max_val_samples=5000, max_test_samples=5000)
+        train_dataset, val_dataset, test_dataset, tokenizer = load_and_preprocess_data(tokenizer=bpe,max_train_samples=5000, max_val_samples=5000, max_test_samples=5000)
     else:
-        train_dataset, val_dataset, test_dataset, tokenizer = load_and_preprocess_data()
+        train_dataset, val_dataset, test_dataset, tokenizer = load_and_preprocess_data(tokenizer=bpe)
 
     # 2. DataLoaders
     train_loader = DataLoader(train_dataset, batch_size=16, shuffle=True, collate_fn=collate_fn)
@@ -43,7 +60,7 @@ def train_model(device, fast_dev=False):
 
     # 3. Modèle
     num_labels = train_dataset[0]['labels'].shape[0]  # inférer le nombre de labels
-    vocab_size = tokenizer.vocab_size
+    vocab_size = len(tokenizer.vocab)
     model = BERTForMultiLabelEmotion(vocab_size=vocab_size, num_labels=num_labels)
 
     # 4. Trainer
@@ -122,10 +139,11 @@ def create_comments_dataloader(comments, tokenizer, device):
     return dataloader
 
 def main():
+
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     print(f"\033[93mUtilisation de l'appareil : {device}\033[0m")
     #TEMP :
-    train_dataset, val_dataset, test_dataset, tokenizer = load_and_preprocess_data(max_train_samples=5000, max_val_samples=5000, max_test_samples=5000)
+    train_dataset, val_dataset, test_dataset, tokenizer = load_and_preprocess_data(tokenizer=bpe,max_train_samples=5000, max_val_samples=5000, max_test_samples=5000)
 
     # 2. DataLoaders
     train_loader = DataLoader(train_dataset, batch_size=16, shuffle=True, collate_fn=collate_fn)
