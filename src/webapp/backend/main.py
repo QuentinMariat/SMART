@@ -82,29 +82,36 @@ async def generate_analysis(url, model_name="mvp") -> DetailedAnalysisResponse:
     logger.debug(f"Démarrage de l'analyse des commentaires YouTube avec le modèle {model_name}")
 
     try:
-        # Récupérer les commentaires YouTube
-        result = await getCommentsFromYoutube(url)
-        top_comments = result.get("comments", [])
-        csv_file_path = result.get("file_path", "")
-
-        # Obtenir l'ID de la vidéo
         video_id = get_video_id(url)
-        
-        if not csv_file_path or not os.path.exists(csv_file_path):
-            logger.warning(f"Le fichier CSV n'a pas été retourné ou n'existe pas, utilisation du chemin par défaut")
-            csv_file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "scrapper", "output", f"youtube_comments_{video_id}.csv")
-        
-        # Vérifier l'existence du fichier CSV et compter les commentaires
+        default_csv_path = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            "scrapper", "output", f"youtube_comments_{video_id}.csv"
+        )
+
+        csv_file_path = default_csv_path
+        top_comments = []
+
+        # 🔍 Vérifier si le fichier CSV existe déjà
+        if os.path.exists(csv_file_path):
+            logger.info(f"Fichier CSV existant trouvé : {csv_file_path}")
+        else:
+            # 📥 Si le fichier n'existe pas, appeler l'API pour récupérer les commentaires
+            logger.info(f"Fichier CSV non trouvé, récupération des commentaires depuis YouTube")
+            result = await getCommentsFromYoutube(url)
+
+            # Mettre à jour les chemins et commentaires depuis les résultats
+            csv_file_path = result.get("file_path", default_csv_path)
+            top_comments = result.get("comments", [])
+
+        # 🔢 Compter les commentaires
         total_comments = len(top_comments)
         if os.path.exists(csv_file_path):
             with open(csv_file_path, 'r', encoding='utf-8') as file:
                 reader = csv.reader(file)
-                row_count = sum(1 for row in reader) - 1  # Soustraire l'en-tête
+                row_count = sum(1 for row in reader) - 1
                 if row_count > 0:
                     total_comments = row_count
                     logger.debug(f"Nombre total de commentaires dans le CSV: {total_comments}")
-        else:
-            logger.warning(f"Fichier CSV non trouvé: {csv_file_path}")
 
         # Analyser les commentaires avec le modèle spécifié
         try:
@@ -113,7 +120,7 @@ async def generate_analysis(url, model_name="mvp") -> DetailedAnalysisResponse:
             if "error" in analysis_results:
                 logger.error(f"Erreur d'analyse: {analysis_results['error']}")
                 raise ValueError(analysis_results["error"])
-                
+
         except Exception as e:
             logger.error(f"Exception lors de l'analyse: {str(e)}")
             return DetailedAnalysisResponse(
@@ -128,6 +135,7 @@ async def generate_analysis(url, model_name="mvp") -> DetailedAnalysisResponse:
                     time="00:00"
                 )]
             )
+
         
         # Vérifier que nous avons bien des résultats normalisés
         if "normalized_results" not in analysis_results or not analysis_results["normalized_results"]:
